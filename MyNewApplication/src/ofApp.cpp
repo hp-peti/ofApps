@@ -6,7 +6,6 @@
 
 //--------------------------------------------------------------
 void ofApp::setup() {
-    ofSetFrameRate(30);
     ofSetBackgroundAuto(false);
     resizeFrameBuffer(ofGetWidth(), ofGetHeight());
 }
@@ -20,22 +19,25 @@ void ofApp::update() {
         line.update(now);
 }
 
+void ofApp::updateBackgroundOpacity() {
+    static const auto baseBgOpacity = .1;
+    static const auto opacityDecayPerFrame = .5;
+    backgroundOpacity = baseBgOpacity + (backgroundOpacity - baseBgOpacity) * (1.0 - opacityDecayPerFrame);
+}
+
 void ofApp::drawToFrameBuffer() {
     ofPushStyle();
     frameBuffer.begin(true);
     ofEnableAlphaBlending();
     ofEnableAntiAliasing();
     ofSetColor(color.get(), backgroundOpacity * 0xFF);
-    static const auto baseBgOpacity = .1;
-    static const auto opacityDecayPerFrame = .5;
-    backgroundOpacity = baseBgOpacity + (backgroundOpacity - baseBgOpacity) * (1.0 - opacityDecayPerFrame);
+    updateBackgroundOpacity();
     ofFill();
     ofDrawRectangle(0, 0, ofGetWidth(), ofGetHeight());
     ofEnableSmoothing();
     for (auto& line : lines) {
         line.draw();
     }
-
     frameBuffer.end();
     ofPopStyle();
 }
@@ -45,6 +47,7 @@ void ofApp::draw() {
     drawToFrameBuffer();
 
     ofDisableAlphaBlending();
+    ofDisableDepthTest();
     frameBuffer.draw(0, 0, ofGetWidth(), ofGetHeight());
 }
 

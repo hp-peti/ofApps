@@ -46,5 +46,6 @@ private:
 
     void drawToFrameBuffer();
     void resizeFrameBuffer(int w, int h);
+    void updateBackgroundOpacity();
 };
 
