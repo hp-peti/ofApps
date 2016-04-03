@@ -36,10 +36,15 @@ private:
     Transition<ofColor> color = { getRandomColor, getRandomLongInterval };
     LineVector lines;
     History redo, undo;
-    ofVec2f lastSize = { 0, 0 };
+
+    ofFbo frameBuffer;
+
     float backgroundOpacity = 1;
     bool SHIFT_PRESSED = false;
     bool ALT_PRESSED = false;
     bool CONTROL_PRESSED = false;
+
+    void drawToFrameBuffer();
+    void resizeFrameBuffer(int w, int h);
 };
 

@@ -66,10 +66,10 @@ struct Line {
         points.erase(points.end() - 1);
     }
 
-    void resize(float proportionX, float proportionY) {
+    void resize(ofVec2f proportion) {
         for (auto &pt : points) {
-            pt.point.x *= proportionX;
-            pt.point.y *= proportionY;
+            pt.point.x *= proportion.x;
+            pt.point.y *= proportion.y;
         }
     }
 

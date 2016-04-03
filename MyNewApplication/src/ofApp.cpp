@@ -8,7 +8,7 @@
 void ofApp::setup() {
     ofSetFrameRate(30);
     ofSetBackgroundAuto(false);
-    lastSize = ofVec2f { (float) ofGetWidth(), (float) ofGetHeight() };
+    resizeFrameBuffer(ofGetWidth(), ofGetHeight());
 }
 
 //--------------------------------------------------------------
@@ -20,23 +20,32 @@ void ofApp::update() {
         line.update(now);
 }
 
-//--------------------------------------------------------------
-void ofApp::draw() {
+void ofApp::drawToFrameBuffer() {
+    ofPushStyle();
+    frameBuffer.begin(true);
     ofEnableAlphaBlending();
-    ofSetColor(color.get(),  backgroundOpacity * 0xFF);
-
+    ofEnableAntiAliasing();
+    ofSetColor(color.get(), backgroundOpacity * 0xFF);
     static const auto baseBgOpacity = .1;
     static const auto opacityDecayPerFrame = .5;
-
     backgroundOpacity = baseBgOpacity + (backgroundOpacity - baseBgOpacity) * (1.0 - opacityDecayPerFrame);
-
     ofFill();
     ofDrawRectangle(0, 0, ofGetWidth(), ofGetHeight());
-
     ofEnableSmoothing();
-    for (auto &line : lines) {
+    for (auto& line : lines) {
         line.draw();
     }
+
+    frameBuffer.end();
+    ofPopStyle();
+}
+
+//--------------------------------------------------------------
+void ofApp::draw() {
+    drawToFrameBuffer();
+
+    ofDisableAlphaBlending();
+    frameBuffer.draw(0, 0, ofGetWidth(), ofGetHeight());
 }
 
 //--------------------------------------------------------------
@@ -168,26 +177,33 @@ void ofApp::mouseExited(int x, int y) {
 
 }
 
+void ofApp::resizeFrameBuffer(int w, int h) {
+    frameBuffer.clear();
+    frameBuffer.allocate(w, h, GL_RGBA);
+    backgroundOpacity = 1;
+}
+
 //--------------------------------------------------------------
 void ofApp::windowResized(int w, int h) {
 
     ofClear(color.get());
 
+    ofVec2f proportion { w/(float)frameBuffer.getWidth(), h/(float)frameBuffer.getHeight()};
+    resizeFrameBuffer(w, h);
+
     for (auto &line : lines) {
-        line.resize(w / lastSize.x, h / lastSize.y);
+        line.resize(proportion);
     }
     for (auto &lines : undo) {
         for (auto &line : lines) {
-            line.resize(w / lastSize.x, h / lastSize.y);
+            line.resize(proportion);
         }
     }
     for (auto &lines : redo) {
         for (auto &line : lines) {
-            line.resize(w / lastSize.x, h / lastSize.y);
+            line.resize(proportion);
         }
     }
-    lastSize = ofVec2f { (float) w, (float) h };
-    backgroundOpacity = 1;
 }
 
 //--------------------------------------------------------------
