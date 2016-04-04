@@ -48,7 +48,6 @@ void drawPoly(Container & points) {
 struct Line::ContourGenerator {
     explicit ContourGenerator(Line &line) :
         line(line)
-
     {
     }
 
@@ -152,8 +151,7 @@ void Line::draw() {
         return;
     }
 
-    ContourGenerator drawer(*this);
-    auto points = drawer.generate();
+    auto points = ContourGenerator{*this}.generate();
 
     ofFill();
     ofSetPolyMode(OF_POLY_WINDING_NONZERO);
