@@ -47,8 +47,7 @@ void drawPoly(Container & points) {
 
 struct Line::ContourGenerator {
     explicit ContourGenerator(Line &line) :
-        line(line)
-    {
+        line(line) {
     }
 
     void resetLastDiff() {
@@ -79,6 +78,8 @@ struct Line::ContourGenerator {
 private:
     void addSegmentToContour(std::vector<ofPoint> &contourPoints, const ofPoint &A, const ofPoint &B) {
 
+        static const auto epsilon = 1e-2f;
+
         ofVec2f segmentVector {B - A};
 
         auto segmentLength = segmentVector.length();
@@ -102,8 +103,9 @@ private:
                 const auto midNorm = midVector / midLength;
                 const auto projectedLength = (R / orthogonal.dot(midNorm));
                 if (projectedLength > 0
-                    and ( projectedLength < lastSegmentLength
-                        or projectedLength < segmentLength)) {
+                    and ( projectedLength <= segmentLength + epsilon
+                        or projectedLength <= lastSegmentLength + epsilon)
+                ) {
                     midPoint = A + midNorm * projectedLength;
                 }
             }
@@ -151,7 +153,7 @@ void Line::draw() {
         return;
     }
 
-    auto points = ContourGenerator{*this}.generate();
+    auto points = ContourGenerator { *this }.generate();
 
     ofFill();
     ofSetPolyMode(OF_POLY_WINDING_NONZERO);
