@@ -116,8 +116,8 @@ struct Line {
     }
 
 private:
-    struct Drawer;
-    friend struct Drawer;
+    struct ContourGenerator;
+    friend struct ContourGenerator;
 
     std::vector<Point> points;
     Properties::Ptr properties;

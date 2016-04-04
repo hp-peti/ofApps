@@ -15,6 +15,7 @@
 #include <vector>
 #include <functional>
 
+inline
 float crossProduct(const ofVec2f &a, const ofVec2f &b) {
     return a.x * b.y - a.y * b.x;
 }
@@ -36,7 +37,7 @@ void drawClosedCurve(Container & points) {
 }
 
 template <typename Container>
-void drawClosedPoly(Container & points) {
+void drawPoly(Container & points) {
     ofBeginShape();
     for (auto& pt : points) {
         ofVertex(pt);
@@ -44,79 +45,88 @@ void drawClosedPoly(Container & points) {
     ofEndShape();
 }
 
-struct Line::Drawer {
-    explicit Drawer(Line &line) :
+struct Line::ContourGenerator {
+    explicit ContourGenerator(Line &line) :
         line(line)
 
     {
-        drawPoints.reserve(4 * line.points.size());
-        R = line.properties->width.get() / 2;
     }
 
-    auto& generate() {
+    void resetLastDiff() {
+        lastSegmentVector = {0, 0};
+        lastSegmentLength = 0;
+    }
+
+    auto generate() {
         using namespace std;
         using namespace std::placeholders;
-        drawPoints.clear();
-        my::for_each_consecutive_pair(line.points, std::bind(&Drawer::add, this, _1, _2));
-        lastDiff = {0, 0};
-        lastDiffLength = 0;
-        my::for_each_consecutive_pair(line.points.rbegin(), line.points.rend(), std::bind(&Drawer::add, this, _1, _2));
 
-        return *this;
-    }
+        std::vector<ofPoint> contourPoints;
+        contourPoints.reserve(4 * line.points.size());
+        this->R = line.properties->width.get() / 2;
 
-    auto &getPoints() {
-        return drawPoints;
+        auto addSegment = [this, &contourPoints] (const Point &a, const Point &b) {
+            this->addSegmentToContour(contourPoints, a.get(), b.get());
+        };
+
+        resetLastDiff();
+        my::for_each_consecutive_pair(line.points, addSegment);
+        resetLastDiff();
+        my::for_each_consecutive_pair(line.points.rbegin(), line.points.rend(), addSegment);
+
+        return contourPoints;
     }
 
 private:
-    void add(const Point &a, const Point &b) {
-        const auto &A = a.get();
-        const auto &B = b.get();
+    void addSegmentToContour(std::vector<ofPoint> &contourPoints, const ofPoint &A, const ofPoint &B) {
 
-        ofVec2f diff(B - A);
+        ofVec2f segmentVector {B - A};
 
-        auto length = diff.length();
-        if (length < 1) {
+        auto segmentLength = segmentVector.length();
+        if (segmentLength < 1) {
             return;
         }
-        const auto direction = diff / length;
-        const ofVec2f orthogonal { direction.y, -direction.x };
-        const auto offset = R * orthogonal;
+        const auto direction = segmentVector / segmentLength;
 
-        if (crossProduct(lastDiff, diff) >= 0) {
-            drawPoints.emplace_back(A + offset);
+        const ofVec2f orthogonal {direction.y, -direction.x};
+        const auto orthoOffset = R * orthogonal;
+
+        if (crossProduct(lastSegmentVector, segmentVector) >= 0) {
+            contourPoints.emplace_back(A + orthoOffset);
         } else {
-            const auto midPoint = (drawPoints.back() + A + offset) / 2;
-            const auto midDiff = midPoint - A;
+            auto &lastContourPoint = contourPoints.back();
+            auto midPoint = (lastContourPoint + A + orthoOffset) / 2;
 
-            const auto midDiffLength = midDiff.length();
-            const auto midNorm = midDiff / midDiffLength;
-
-            const auto projectedLength = (R / orthogonal.dot(midNorm));
-
-            const auto newMidPoint = A + midNorm * projectedLength;
-            if (projectedLength <= 0 || (projectedLength > lastDiffLength && projectedLength > length)) {
-                drawPoints.back() = midPoint;
-            } else {
-                drawPoints.back() = newMidPoint;
+            const auto midVector = midPoint - A;
+            const auto midLength = midVector.length();
+            if (midLength > 0) {
+                const auto midNorm = midVector / midLength;
+                const auto projectedLength = (R / orthogonal.dot(midNorm));
+                if (projectedLength > 0
+                    and ( projectedLength < lastSegmentLength
+                        or projectedLength < segmentLength)) {
+                    midPoint = A + midNorm * projectedLength;
+                }
             }
+            lastContourPoint = midPoint;
         }
-        drawPoints.emplace_back(B + offset);
-        lastDiff = diff;
-        lastDiffLength = length;
+
+        contourPoints.emplace_back(B + orthoOffset);
+        lastSegmentVector = segmentVector;
+        lastSegmentLength = segmentLength;
     }
 
     Line &line;
-    float R;
-    float lastDiffLength = 0;
-    ofVec2f lastDiff { 0, 0 };
-    std::vector<ofPoint> drawPoints;
+
+    float R = 0;
+    float lastSegmentLength = 0;
+    ofVec2f lastSegmentVector {0, 0};
 };
 
 void Line::draw() {
     if (points.empty())
         return;
+
     ofSetColor(properties->color.get());
 
     if (points.size() == 1) {
@@ -142,12 +152,13 @@ void Line::draw() {
         return;
     }
 
-    Drawer drawer(*this);
-    drawer.generate();
+    ContourGenerator drawer(*this);
+    auto points = drawer.generate();
 
     ofFill();
     ofSetPolyMode(OF_POLY_WINDING_NONZERO);
-    drawClosedPoly(drawer.getPoints());
+
+    drawPoly(points);
 
 }
 
