@@ -1,4 +1,6 @@
 #include "ofApp.h"
+#include <string>
+
 
 //--------------------------------------------------------------
 void ofApp::setup() {
@@ -21,8 +23,8 @@ void ofApp::update() {
 }
 
 void ofApp::drawHelpText() {
-    string msg = string("Using mouse inputs to navigate (press 'c' to toggle): ") + (cam.getMouseInputEnabled() ? "YES" : "NO");
-    msg += string("\nShowing help (press 'h' to toggle): ") + (bShowHelp ? "YES" : "NO");
+    std::string msg = "Using mouse inputs to navigate (press 'c' to toggle): "s + (cam.getMouseInputEnabled() ? "YES" : "NO");
+    msg += "\nShowing help (press 'h' to toggle): "s + (bShowHelp ? "YES" : "NO");
     if (bShowHelp) {
         msg +=
             "\n\nLEFT MOUSE BUTTON DRAG:\nStart dragging INSIDE the yellow circle -> camera XY rotation .\nStart dragging OUTSIDE the yellow circle -> camera Z rotation (roll).\n\n";
@@ -73,9 +75,9 @@ void ofApp::draw() {
 //--------------------------------------------------------------
 void ofApp::drawInteractionArea() {
     ofRectangle vp = ofGetCurrentViewport();
-    float r = std::min(vp.width, vp.height) * 0.5f;
-    float x = vp.width * 0.5f;
-    float y = vp.height * 0.5f;
+    auto r = std::min(vp.width, vp.height) * 0.5f;
+    auto x = vp.width * 0.5f;
+    auto y = vp.height * 0.5f;
 
     ofPushStyle();
     ofSetLineWidth(3);
@@ -105,6 +107,12 @@ void ofApp::keyPressed(int key) {
     case 'h':
         bShowHelp ^= true;
         break;
+    case 'o':
+    case 'O':
+        if (cam.getOrtho())
+            cam.disableOrtho();
+        else
+            cam.enableOrtho();
     }
 }
 
