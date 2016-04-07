@@ -13,20 +13,20 @@
 
 namespace my {
 
-template<typename Iterator, typename Func>
+template <typename Iterator, typename Func>
 void for_each_consecutive_pair(Iterator begin, Iterator end, Func func) {
-	if (begin == end)
-		return;
-	auto prev = begin++;
-	while (begin != end) {
-		func(*prev, *begin);
-		prev = begin++;
-	}
+    if (begin == end)
+        return;
+    auto prev = begin++;
+    while (begin != end) {
+        func(*prev, *begin);
+        prev = begin++;
+    }
 }
 
-template<typename Container, typename Func>
+template <typename Container, typename Func>
 void for_each_consecutive_pair(Container &cont, Func func) {
-	for_each_consecutive_pair(begin(cont), end(cont), func);
+    for_each_consecutive_pair(begin(cont), end(cont), func);
 }
 
 } // namespace my
