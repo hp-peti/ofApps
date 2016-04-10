@@ -27,7 +27,7 @@ struct Line {
     private:
         Properties() = default;
 
-        friend class Line;
+        friend struct Line;
 
         Transition<ofColor> color = { getRandomColor, getRandomInterval };
         Transition<float> width = { getRandomWidth, getRandomWidthInterval };
@@ -101,7 +101,7 @@ struct Line {
         }
 
     private:
-        friend class Line;
+		friend struct Line;
         ofPoint point;
         ofPoint vertex;
         std::shared_ptr<Transition<ofPoint>> displacement = std::make_shared<Transition<ofPoint>>(getRandomDisplacement,

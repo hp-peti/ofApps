@@ -4,6 +4,7 @@
  *  Created on: 26 Mar 2016
  *      Author: hpp
  */
+#define _USE_MATH_DEFINES
 
 #include "Line.h"
 #include "myAlgo.h"
@@ -14,6 +15,8 @@
 
 #include <vector>
 #include <functional>
+
+#include <ciso646>
 
 inline
 float crossProduct(const ofVec2f &a, const ofVec2f &b) {

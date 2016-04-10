@@ -40,9 +40,9 @@ private:
     ofFbo frameBuffer;
 
     float backgroundOpacity = 1;
-    bool SHIFT_PRESSED = false;
-    bool ALT_PRESSED = false;
-    bool CONTROL_PRESSED = false;
+    bool shiftPressed = false;
+    bool altPressed = false;
+    bool controlPressed = false;
 
     void drawToFrameBuffer();
     void resizeFrameBuffer(int w, int h);
