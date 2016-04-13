@@ -5,15 +5,12 @@
 #include <cassert>
 #include <ciso646>
 
-//--------------------------------------------------------------
 void ofApp::setup() {
     ofSetBackgroundAuto(false);
     resizeFrameBuffer(ofGetWidth(), ofGetHeight());
 }
 
-//--------------------------------------------------------------
 void ofApp::update() {
-
     auto now = TransitionBase::clockNow();
     color.update(now);
     for (auto &line : lines)
@@ -43,7 +40,6 @@ void ofApp::drawToFrameBuffer() {
     ofPopStyle();
 }
 
-//--------------------------------------------------------------
 void ofApp::draw() {
     drawToFrameBuffer();
 
@@ -52,7 +48,6 @@ void ofApp::draw() {
     frameBuffer.draw(0, 0, ofGetWidth(), ofGetHeight());
 }
 
-//--------------------------------------------------------------
 void ofApp::keyPressed(int key) {
 
     switch (key) {
@@ -111,7 +106,6 @@ void ofApp::keyPressed(int key) {
     }
 }
 
-//--------------------------------------------------------------
 void ofApp::keyReleased(int key) {
     switch (key) {
     case OF_KEY_SHIFT:
@@ -126,12 +120,10 @@ void ofApp::keyReleased(int key) {
     }
 }
 
-//--------------------------------------------------------------
 void ofApp::mouseMoved(int x, int y) {
 
 }
 
-//--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button) {
     if (button == OF_MOUSE_BUTTON_1) {
         if (lines.empty()) {
@@ -145,7 +137,6 @@ void ofApp::mouseDragged(int x, int y, int button) {
     }
 }
 
-//--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button) {
     if (button == OF_MOUSE_BUTTON_1) {
         undo.push_back(lines);
@@ -164,22 +155,13 @@ void ofApp::mousePressed(int x, int y, int button) {
     }
 }
 
-//--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button) {
-//    if (button == OF_MOUSE_BUTTON_1) {
-//        if (lines.back().empty() or ((lines.back().size() < 2) and not (ALT_PRESSED))) {
-//            lines.pop_back();
-//            undo.pop_back();
-//        }
-//    }
 }
 
-//--------------------------------------------------------------
 void ofApp::mouseEntered(int x, int y) {
 
 }
 
-//--------------------------------------------------------------
 void ofApp::mouseExited(int x, int y) {
 
 }
@@ -190,12 +172,11 @@ void ofApp::resizeFrameBuffer(int w, int h) {
     backgroundOpacity = 1;
 }
 
-//--------------------------------------------------------------
 void ofApp::windowResized(int w, int h) {
 
     ofClear(color.get());
 
-    ofVec2f proportion { w/(float)frameBuffer.getWidth(), h/(float)frameBuffer.getHeight()};
+    ofVec2f proportion { w / (float) frameBuffer.getWidth(), h / (float) frameBuffer.getHeight() };
     resizeFrameBuffer(w, h);
 
     for (auto &line : lines) {
@@ -213,11 +194,9 @@ void ofApp::windowResized(int w, int h) {
     }
 }
 
-//--------------------------------------------------------------
 void ofApp::gotMessage(ofMessage msg) {
 }
 
-//--------------------------------------------------------------
 void ofApp::dragEvent(ofDragInfo dragInfo) {
 
 }
