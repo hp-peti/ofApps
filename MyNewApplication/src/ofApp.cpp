@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <cassert>
+#include <ciso646>
 
 //--------------------------------------------------------------
 void ofApp::setup() {
@@ -70,8 +71,8 @@ void ofApp::keyPressed(int key) {
         break;
     case 'z':
     case 'Z':
-        if (CONTROL_PRESSED) {
-            if (SHIFT_PRESSED) {
+        if (controlPressed) {
+            if (shiftPressed) {
                 goto redo;
             }
             goto undo;
@@ -96,13 +97,13 @@ void ofApp::keyPressed(int key) {
         }
         break;
     case OF_KEY_SHIFT:
-        SHIFT_PRESSED = true;
+        shiftPressed = true;
         break;
     case OF_KEY_ALT:
-        ALT_PRESSED = true;
+        altPressed = true;
         break;
     case OF_KEY_CONTROL:
-        CONTROL_PRESSED = true;
+        controlPressed = true;
         break;
     }
 }
@@ -111,13 +112,13 @@ void ofApp::keyPressed(int key) {
 void ofApp::keyReleased(int key) {
     switch (key) {
     case OF_KEY_SHIFT:
-        SHIFT_PRESSED = false;
+        shiftPressed = false;
         break;
     case OF_KEY_ALT:
-        ALT_PRESSED = false;
+        altPressed = false;
         break;
     case OF_KEY_CONTROL:
-        CONTROL_PRESSED = false;
+        controlPressed = false;
         break;
     }
 }
@@ -147,8 +148,8 @@ void ofApp::mousePressed(int x, int y, int button) {
         undo.push_back(lines);
         redo.clear();
         Line::Properties::Ptr properties { };
-        if (not lines.empty() and SHIFT_PRESSED) {
-            if (CONTROL_PRESSED) {
+        if (not lines.empty() and shiftPressed) {
+            if (controlPressed) {
                 return mouseDragged(x, y, button);
             }
             properties = lines.back().getProperties();
