@@ -45,6 +45,7 @@ private:
         bool alt = false;
         bool control = false;
     } isKeyPressed;
+
     void drawToFrameBuffer();
     void resizeFrameBuffer(int w, int h);
     void updateBackgroundOpacity();

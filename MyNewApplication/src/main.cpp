@@ -7,6 +7,6 @@ int main() {
     ofSetFrameRate(30);
     ofSetVerticalSync(true);
     ofSetEscapeQuitsApp(false);
-    ofSetWindowTitle("Hello, world!");
+    ofSetWindowTitle("Hello, World!");
     ofRunApp(new ofApp { });
 }

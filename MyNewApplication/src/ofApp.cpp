@@ -33,9 +33,9 @@ void ofApp::drawToFrameBuffer() {
     ofFill();
     ofDrawRectangle(0, 0, ofGetWidth(), ofGetHeight());
     ofEnableSmoothing();
-    for (auto& line : lines) {
+    for (auto& line : lines)
         line.draw();
-    }
+
     frameBuffer.end();
     ofPopStyle();
 }
@@ -126,14 +126,14 @@ void ofApp::mouseMoved(int x, int y) {
 
 void ofApp::mouseDragged(int x, int y, int button) {
     if (button == OF_MOUSE_BUTTON_1) {
-        if (lines.empty()) {
+        if (lines.empty())
             return mousePressed(x, y, button);
-        }
+
         auto &line = lines.back();
         line.add(x, y);
-        if (line.lastDistance() < 8) {
+
+        if (line.lastDistance() < 8)
             line.removeLast();
-        }
     }
 }
 
@@ -179,19 +179,17 @@ void ofApp::windowResized(int w, int h) {
     ofVec2f proportion { w / (float) frameBuffer.getWidth(), h / (float) frameBuffer.getHeight() };
     resizeFrameBuffer(w, h);
 
-    for (auto &line : lines) {
+    for (auto &line : lines)
         line.resize(proportion);
-    }
-    for (auto &lines : undo) {
-        for (auto &line : lines) {
+
+    for (auto &lines : undo)
+        for (auto &line : lines)
             line.resize(proportion);
-        }
-    }
-    for (auto &lines : redo) {
-        for (auto &line : lines) {
+
+    for (auto &lines : redo)
+        for (auto &line : lines)
             line.resize(proportion);
-        }
-    }
+
 }
 
 void ofApp::gotMessage(ofMessage msg) {
