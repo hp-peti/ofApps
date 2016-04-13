@@ -57,9 +57,11 @@ void ofApp::keyPressed(int key) {
 
     switch (key) {
     case 'f':
+    case 'F':
         ofToggleFullscreen();
         break;
     case 'q':
+    case 'Q':
         ofExit(0);
         break;
     case OF_KEY_DEL:
@@ -71,8 +73,8 @@ void ofApp::keyPressed(int key) {
         break;
     case 'z':
     case 'Z':
-        if (controlPressed) {
-            if (shiftPressed) {
+        if (isKeyPressed.control) {
+            if (isKeyPressed.shift) {
                 goto redo;
             }
             goto undo;
@@ -81,6 +83,7 @@ void ofApp::keyPressed(int key) {
     case OF_KEY_LEFT:
     case OF_KEY_BACKSPACE:
     case 'u':
+    case 'U':
         undo: if (undo.size()) {
             redo.emplace_back(std::move(lines));
             lines = std::move(undo.back());
@@ -88,8 +91,8 @@ void ofApp::keyPressed(int key) {
             backgroundOpacity = .5;
         }
         break;
-    case OF_KEY_RIGHT:
     case 'r':
+    case 'R':
         redo: if (redo.size()) {
             undo.emplace_back(std::move(lines));
             lines = std::move(redo.back());
@@ -97,13 +100,13 @@ void ofApp::keyPressed(int key) {
         }
         break;
     case OF_KEY_SHIFT:
-        shiftPressed = true;
+        isKeyPressed.shift = true;
         break;
     case OF_KEY_ALT:
-        altPressed = true;
+        isKeyPressed.alt = true;
         break;
     case OF_KEY_CONTROL:
-        controlPressed = true;
+        isKeyPressed.control = true;
         break;
     }
 }
@@ -112,13 +115,13 @@ void ofApp::keyPressed(int key) {
 void ofApp::keyReleased(int key) {
     switch (key) {
     case OF_KEY_SHIFT:
-        shiftPressed = false;
+        isKeyPressed.shift = false;
         break;
     case OF_KEY_ALT:
-        altPressed = false;
+        isKeyPressed.alt = false;
         break;
     case OF_KEY_CONTROL:
-        controlPressed = false;
+        isKeyPressed.control = false;
         break;
     }
 }
@@ -148,8 +151,8 @@ void ofApp::mousePressed(int x, int y, int button) {
         undo.push_back(lines);
         redo.clear();
         Line::Properties::Ptr properties { };
-        if (not lines.empty() and shiftPressed) {
-            if (controlPressed) {
+        if (not lines.empty() and isKeyPressed.shift) {
+            if (isKeyPressed.control) {
                 return mouseDragged(x, y, button);
             }
             properties = lines.back().getProperties();

@@ -40,10 +40,11 @@ private:
     ofFbo frameBuffer;
 
     float backgroundOpacity = 1;
-    bool shiftPressed = false;
-    bool altPressed = false;
-    bool controlPressed = false;
-
+    struct {
+        bool shift = false;
+        bool alt = false;
+        bool control = false;
+    } isKeyPressed;
     void drawToFrameBuffer();
     void resizeFrameBuffer(int w, int h);
     void updateBackgroundOpacity();
