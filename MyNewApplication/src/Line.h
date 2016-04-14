@@ -80,8 +80,8 @@ struct Line {
     void draw();
 
     struct Point {
-        Point() {
-        }
+        Point() = default;
+
         Point(float x, float y) :
             point { x, y } {
         }
@@ -101,7 +101,7 @@ struct Line {
         }
 
     private:
-		friend struct Line;
+        friend struct Line;
         ofPoint point;
         ofPoint vertex;
         std::shared_ptr<Transition<ofPoint>> displacement = std::make_shared<Transition<ofPoint>>(getRandomDisplacement,
