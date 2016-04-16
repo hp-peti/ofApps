@@ -75,8 +75,8 @@ void ofApp::keyPressed(int key) {
             goto undo;
         }
         break;
-    case OF_KEY_LEFT:
     case OF_KEY_BACKSPACE:
+    case OF_KEY_LEFT:
     case 'u':
     case 'U':
         undo: if (undo.size()) {
@@ -86,6 +86,7 @@ void ofApp::keyPressed(int key) {
             backgroundOpacity = .5;
         }
         break;
+    case OF_KEY_RIGHT:
     case 'r':
     case 'R':
         redo: if (redo.size()) {
@@ -140,8 +141,6 @@ void ofApp::mouseDragged(int x, int y, int button) {
 
 void ofApp::mousePressed(int x, int y, int button) {
     if (button == OF_MOUSE_BUTTON_LEFT) {
-        undo.push_back(lines);
-        redo.clear();
         Line::Properties::Ptr properties { };
         if (not lines.empty() and isKeyPressed.shift) {
             if (isKeyPressed.control) {
@@ -151,8 +150,9 @@ void ofApp::mousePressed(int x, int y, int button) {
         } else {
             properties = Line::Properties::create();
         }
-        Line line { (float) x, (float) y, properties };
-        lines.push_back(std::move(line));
+        undo.push_back(lines);
+        lines.emplace_back((float)x, (float)y, properties);
+        redo.clear();
     } else if (button == OF_MOUSE_BUTTON_RIGHT) {
         auto found = std::find_if(lines.rbegin(), lines.rend(), [x,y] (Line &line) {
             return line.contains( {(float)x, (float)y});
