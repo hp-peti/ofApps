@@ -61,7 +61,7 @@ void ofApp::keyPressed(int key) {
         break;
     case OF_KEY_DEL:
     case 'c':
-        undo.emplace_back(std::move(lines));
+        undo.push_back(std::move(lines));
         redo.clear();
         lines.clear();
         backgroundOpacity = 1;
@@ -80,7 +80,7 @@ void ofApp::keyPressed(int key) {
     case 'u':
     case 'U':
         undo: if (undo.size()) {
-            redo.emplace_back(std::move(lines));
+            redo.push_back(std::move(lines));
             lines = std::move(undo.back());
             undo.pop_back();
             backgroundOpacity = .5;
@@ -89,9 +89,10 @@ void ofApp::keyPressed(int key) {
     case 'r':
     case 'R':
         redo: if (redo.size()) {
-            undo.emplace_back(std::move(lines));
+            undo.push_back(std::move(lines));
             lines = std::move(redo.back());
             redo.pop_back();
+            backgroundOpacity = .5;
         }
         break;
     case OF_KEY_SHIFT:
@@ -125,7 +126,7 @@ void ofApp::mouseMoved(int x, int y) {
 }
 
 void ofApp::mouseDragged(int x, int y, int button) {
-    if (button == OF_MOUSE_BUTTON_1) {
+    if (button == OF_MOUSE_BUTTON_LEFT) {
         if (lines.empty())
             return mousePressed(x, y, button);
 
@@ -138,7 +139,7 @@ void ofApp::mouseDragged(int x, int y, int button) {
 }
 
 void ofApp::mousePressed(int x, int y, int button) {
-    if (button == OF_MOUSE_BUTTON_1) {
+    if (button == OF_MOUSE_BUTTON_LEFT) {
         undo.push_back(lines);
         redo.clear();
         Line::Properties::Ptr properties { };
@@ -152,6 +153,15 @@ void ofApp::mousePressed(int x, int y, int button) {
         }
         Line line { (float) x, (float) y, properties };
         lines.push_back(std::move(line));
+    } else if (button == OF_MOUSE_BUTTON_RIGHT) {
+        auto found = std::find_if(lines.rbegin(), lines.rend(), [x,y] (Line &line) {
+            return line.contains( {(float)x, (float)y});
+        });
+        if (found != lines.rend()) {
+            undo.push_back(lines);
+            lines.erase(found.base() - 1);
+            backgroundOpacity = .5;
+        }
     }
 }
 

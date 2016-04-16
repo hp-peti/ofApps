@@ -24,19 +24,18 @@ float crossProduct(const ofVec2f &a, const ofVec2f &b) {
 }
 
 template <class Container>
-void drawClosedCurve(Container & points) {
-    ofBeginShape();
+void makeClosedCurvePolyLine(Container & points, ofPolyline *polyLine) {
+    polyLine->clear();
     for (auto& pt : points) {
-        ofCurveVertex(pt);
+        polyLine->curveTo(pt);
     }
     int n { 3 };
     for (auto& pt : points) {
         if (!n--)
             break;
-
-        ofCurveVertex(pt);
+        polyLine->curveTo(pt);
     }
-    ofEndShape();
+    polyLine->close();
 }
 
 template <typename Container>
@@ -46,6 +45,14 @@ void drawPoly(Container & points) {
         ofVertex(pt);
     }
     ofEndShape();
+}
+
+template <class Container>
+void drawClosedCurve(Container & points) {
+
+    ofPolyline poly { };
+    makeClosedCurvePolyLine(points, &poly);
+    drawPoly(poly);
 }
 
 struct Line::ContourGenerator {
@@ -58,7 +65,7 @@ struct Line::ContourGenerator {
         lastSegmentLength = 0;
     }
 
-    auto generate() {
+    std::vector<ofPoint> generate() {
         using namespace std;
         using namespace std::placeholders;
 
@@ -162,6 +169,25 @@ void Line::draw() {
     ofSetPolyMode(OF_POLY_WINDING_NONZERO);
 
     drawPoly(points);
-
 }
 
+bool Line::contains(const ofPoint &pt) {
+
+    if (points.empty())
+        return false;
+
+    if (points.size() == 1) {
+        return points.back().get().distance(pt) <= properties->width.get() / 2;
+    }
+
+    ofPolyline polyLine { };
+
+    if (isClosedCurve()) {
+        makeClosedCurvePolyLine(points, &polyLine);
+    } else {
+        polyLine.addVertices(ContourGenerator {*this}.generate());
+        polyLine.close();
+    }
+
+    return polyLine.inside(pt);
+}

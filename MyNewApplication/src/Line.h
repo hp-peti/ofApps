@@ -79,6 +79,8 @@ struct Line {
 
     void draw();
 
+    bool contains(const ofPoint &pt);
+
     struct Point {
         Point() = default;
 
