@@ -22,10 +22,15 @@ struct Line {
             width.update(now);
         }
         static Ptr create() {
-            return Properties::Ptr(new Properties { });
+            return Ptr(new Properties { });
         }
+        static Ptr clone(const Ptr &properties) {
+            return Ptr(new Properties { *properties });
+        }
+
     private:
         Properties() = default;
+        Properties(const Properties &other) = default;
 
         friend struct Line;
 
@@ -122,6 +127,10 @@ struct Line {
     }
     auto size() const {
         return points.size();
+    }
+
+    void cloneNewProperties() {
+        properties = Properties::clone(properties);
     }
 
 private:

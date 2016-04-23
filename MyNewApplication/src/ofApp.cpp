@@ -171,14 +171,20 @@ void ofApp::mousePressed(int x, int y, int button) {
             return line.contains( {(float)x, (float)y});
         });
         if (found != lines.rend()) {
-            bool isDeleting { button == OF_MOUSE_BUTTON_MIDDLE or (button == OF_MOUSE_BUTTON_RIGHT and isKeyPressed.control) };
+            bool isCopying { button == OF_MOUSE_BUTTON_RIGHT and isKeyPressed.shift };
+            bool cloneNewProperties { button == OF_MOUSE_BUTTON_RIGHT and not isKeyPressed.control };
+            bool isDeleting { button == OF_MOUSE_BUTTON_MIDDLE or (button == OF_MOUSE_BUTTON_RIGHT and isKeyPressed.control and not isKeyPressed.shift) };
             undo.push_back(lines);
             if (isDeleting) {
                 backgroundOpacity = .5;
             } else {
-                movingLine.reset(new MovingLine { button, { (float) x, (float) y }, std::move(*found) });
+                movingLine.reset(new MovingLine { button, { (float) x, (float) y }, *found });
+                if (cloneNewProperties) {
+                    movingLine->line.cloneNewProperties();
+                }
             }
-            lines.erase(found.base() - 1);
+            if (not isCopying)
+                lines.erase(found.base() - 1);
         }
     }
 }
