@@ -73,6 +73,13 @@ struct Line {
         }
     }
 
+    void move(ofVec2f offset) {
+        for (auto &pt : points) {
+            pt.point.x += offset.x;
+            pt.point.y += offset.y;
+        }
+    }
+
     float width() const {
         return properties->width.get();
     }

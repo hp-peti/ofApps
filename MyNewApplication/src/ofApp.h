@@ -37,6 +37,14 @@ private:
     LineVector lines;
     History redo, undo;
 
+    struct MovingLine {
+        int button;
+        ofVec2f lastPos;
+        Line line;
+    };
+
+    std::unique_ptr<MovingLine> movingLine;
+
     ofFbo frameBuffer;
 
     float backgroundOpacity = 1;

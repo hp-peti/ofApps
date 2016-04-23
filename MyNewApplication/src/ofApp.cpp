@@ -15,6 +15,8 @@ void ofApp::update() {
     color.update(now);
     for (auto &line : lines)
         line.update(now);
+    if (movingLine)
+        movingLine->line.update(now);
 }
 
 void ofApp::updateBackgroundOpacity() {
@@ -35,7 +37,9 @@ void ofApp::drawToFrameBuffer() {
     ofEnableSmoothing();
     for (auto& line : lines)
         line.draw();
-
+    if (movingLine) {
+        movingLine->line.draw();
+    }
     frameBuffer.end();
     ofPopStyle();
 }
@@ -127,6 +131,13 @@ void ofApp::mouseMoved(int x, int y) {
 }
 
 void ofApp::mouseDragged(int x, int y, int button) {
+    if (movingLine != nullptr and button == movingLine->button) {
+        ofVec2f curPos { (float) x, (float) y };
+        movingLine->line.move(curPos - movingLine->lastPos);
+        movingLine->lastPos = curPos;
+        backgroundOpacity = .5;
+        return;
+    }
     if (button == OF_MOUSE_BUTTON_LEFT) {
         if (lines.empty())
             return mousePressed(x, y, button);
@@ -137,9 +148,11 @@ void ofApp::mouseDragged(int x, int y, int button) {
         if (line.lastDistance() < 8)
             line.removeLast();
     }
+    return;
 }
 
 void ofApp::mousePressed(int x, int y, int button) {
+
     if (button == OF_MOUSE_BUTTON_LEFT) {
         Line::Properties::Ptr properties { };
         if (not lines.empty() and isKeyPressed.shift) {
@@ -151,21 +164,30 @@ void ofApp::mousePressed(int x, int y, int button) {
             properties = Line::Properties::create();
         }
         undo.push_back(lines);
-        lines.emplace_back((float)x, (float)y, properties);
+        lines.emplace_back((float) x, (float) y, properties);
         redo.clear();
-    } else if (button == OF_MOUSE_BUTTON_RIGHT) {
+    } else if (button == OF_MOUSE_BUTTON_RIGHT or button == OF_MOUSE_BUTTON_MIDDLE) {
         auto found = std::find_if(lines.rbegin(), lines.rend(), [x,y] (Line &line) {
             return line.contains( {(float)x, (float)y});
         });
         if (found != lines.rend()) {
+            bool isDeleting { button == OF_MOUSE_BUTTON_MIDDLE or (button == OF_MOUSE_BUTTON_RIGHT and isKeyPressed.control) };
             undo.push_back(lines);
+            if (isDeleting) {
+                backgroundOpacity = .5;
+            } else {
+                movingLine.reset(new MovingLine { button, { (float) x, (float) y }, std::move(*found) });
+            }
             lines.erase(found.base() - 1);
-            backgroundOpacity = .5;
         }
     }
 }
 
 void ofApp::mouseReleased(int x, int y, int button) {
+    if (movingLine) {
+        lines.push_back(std::move(movingLine->line));
+        movingLine.reset();
+    }
 }
 
 void ofApp::mouseEntered(int x, int y) {
@@ -203,6 +225,7 @@ void ofApp::windowResized(int w, int h) {
 }
 
 void ofApp::gotMessage(ofMessage msg) {
+
 }
 
 void ofApp::dragEvent(ofDragInfo dragInfo) {
