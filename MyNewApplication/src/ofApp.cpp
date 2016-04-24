@@ -157,6 +157,7 @@ void ofApp::mousePressed(int x, int y, int button) {
         Line::Properties::Ptr properties { };
         if (not lines.empty() and isKeyPressed.shift) {
             if (isKeyPressed.control) {
+                undo.push_back(lines);
                 return mouseDragged(x, y, button);
             }
             properties = lines.back().getProperties();
@@ -172,7 +173,7 @@ void ofApp::mousePressed(int x, int y, int button) {
         });
         if (found != lines.rend()) {
             bool isCopying { button == OF_MOUSE_BUTTON_RIGHT and isKeyPressed.shift };
-            bool cloneNewProperties { button == OF_MOUSE_BUTTON_RIGHT and not isKeyPressed.control };
+            bool cloneNewProperties { isCopying and not isKeyPressed.control };
             bool isDeleting { button == OF_MOUSE_BUTTON_MIDDLE or (button == OF_MOUSE_BUTTON_RIGHT and isKeyPressed.control and not isKeyPressed.shift) };
             undo.push_back(lines);
             if (isDeleting) {
