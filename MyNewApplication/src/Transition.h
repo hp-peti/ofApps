@@ -29,8 +29,9 @@ struct Transition: TransitionBase {
 
     template <typename Value, typename Interval>
     Transition(Value value, Interval interval) :
-        getValue(value),
-        getInterval(interval) {
+        getValue { value },
+        getInterval { interval } {
+
         using namespace std::chrono;
         beginValue = getValue();
         startTime = system_clock::now();
