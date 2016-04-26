@@ -52,6 +52,24 @@ void ofApp::draw() {
     frameBuffer.draw(0, 0, ofGetWidth(), ofGetHeight());
 }
 
+void ofApp::clearLines() {
+    if (lines.size()) {
+        undo.push_back(std::move(lines));
+        redo.clear();
+        lines.clear();
+        backgroundOpacity = 1;
+    }
+}
+
+void ofApp::undoLines() {
+    if (undo.size()) {
+        redo.push_back(std::move(lines));
+        lines = std::move(undo.back());
+        undo.pop_back();
+        backgroundOpacity = .5;
+    }
+}
+
 void ofApp::keyPressed(int key) {
 
     switch (key) {
@@ -65,40 +83,29 @@ void ofApp::keyPressed(int key) {
         break;
     case OF_KEY_DEL:
     case 'c':
-        undo.push_back(std::move(lines));
-        redo.clear();
-        lines.clear();
-        backgroundOpacity = 1;
+        clearLines();
         break;
     case 'z':
     case 'Z':
         if (isKeyPressed.control) {
             if (isKeyPressed.shift) {
-                goto redo;
+                redoLines();
+                break;
             }
-            goto undo;
+            undoLines();
+            break;
         }
         break;
     case OF_KEY_BACKSPACE:
     case OF_KEY_LEFT:
     case 'u':
     case 'U':
-        undo: if (undo.size()) {
-            redo.push_back(std::move(lines));
-            lines = std::move(undo.back());
-            undo.pop_back();
-            backgroundOpacity = .5;
-        }
+        undoLines();
         break;
     case OF_KEY_RIGHT:
     case 'r':
     case 'R':
-        redo: if (redo.size()) {
-            undo.push_back(std::move(lines));
-            lines = std::move(redo.back());
-            redo.pop_back();
-            backgroundOpacity = .5;
-        }
+        redoLines();
         break;
     case OF_KEY_SHIFT:
         isKeyPressed.shift = true;
@@ -151,31 +158,35 @@ void ofApp::mouseDragged(int x, int y, int button) {
     return;
 }
 
+void ofApp::saveUndo() {
+    undo.push_back(lines);
+    redo.clear();
+}
+
 void ofApp::mousePressed(int x, int y, int button) {
 
     if (button == OF_MOUSE_BUTTON_LEFT) {
         Line::Properties::Ptr properties { };
         if (not lines.empty() and isKeyPressed.shift) {
             if (isKeyPressed.control) {
-                undo.push_back(lines);
+                saveUndo();
                 return mouseDragged(x, y, button);
             }
             properties = lines.back().getProperties();
         } else {
             properties = Line::Properties::create();
         }
-        undo.push_back(lines);
+        saveUndo();
         lines.emplace_back((float) x, (float) y, properties);
-        redo.clear();
     } else if (button == OF_MOUSE_BUTTON_RIGHT or button == OF_MOUSE_BUTTON_MIDDLE) {
         auto found = std::find_if(lines.rbegin(), lines.rend(), [x,y] (Line &line) {
             return line.contains( {(float)x, (float)y});
         });
         if (found != lines.rend()) {
+            saveUndo();
             bool isCopying { button == OF_MOUSE_BUTTON_RIGHT and isKeyPressed.shift };
             bool cloneNewProperties { isCopying and not isKeyPressed.control };
             bool isDeleting { button == OF_MOUSE_BUTTON_MIDDLE or (button == OF_MOUSE_BUTTON_RIGHT and isKeyPressed.control and not isKeyPressed.shift) };
-            undo.push_back(lines);
             if (isDeleting) {
                 backgroundOpacity = .5;
             } else {
@@ -221,6 +232,9 @@ void ofApp::windowResized(int w, int h) {
     for (auto &line : lines)
         line.resize(proportion);
 
+    if (movingLine)
+        movingLine->line.resize(proportion);
+
     for (auto &lines : undo)
         for (auto &line : lines)
             line.resize(proportion);
@@ -228,7 +242,6 @@ void ofApp::windowResized(int w, int h) {
     for (auto &lines : redo)
         for (auto &line : lines)
             line.resize(proportion);
-
 }
 
 void ofApp::gotMessage(ofMessage msg) {
@@ -239,3 +252,11 @@ void ofApp::dragEvent(ofDragInfo dragInfo) {
 
 }
 
+void ofApp::redoLines() {
+    if (redo.size()) {
+        undo.push_back(std::move(lines));
+        lines = std::move(redo.back());
+        redo.pop_back();
+        backgroundOpacity = .5;
+    }
+}

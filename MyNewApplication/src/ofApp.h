@@ -56,6 +56,13 @@ private:
 
     void drawToFrameBuffer();
     void resizeFrameBuffer(int w, int h);
+
     void updateBackgroundOpacity();
+
+    void saveUndo();
+
+    void clearLines();
+    void undoLines();
+    void redoLines();
 };
 
