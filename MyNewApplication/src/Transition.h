@@ -11,6 +11,9 @@
 #include <chrono>
 #include <functional>
 
+template <typename T>
+using Generator = std::function<T()>;
+
 struct TransitionBase {
     using Timestamp = std::chrono::system_clock::time_point;
     using TimeDiff = std::chrono::system_clock::duration;
@@ -24,16 +27,16 @@ struct TransitionBase {
 
 template <class Scalable>
 struct Transition: TransitionBase {
-    std::function<Scalable()> getValue;
-    std::function<float()> getInterval;
+    Generator<Scalable> getNextValue;
+    Generator<float> getNextInterval;
 
-    template <typename Value, typename Interval>
-    Transition(Value value, Interval interval) :
-        getValue { value },
-        getInterval { interval } {
+    template <typename ValueFun, typename IntervalFun>
+    Transition(ValueFun valueGenerator, IntervalFun intervalGenerator) :
+        getNextValue { valueGenerator },
+        getNextInterval { intervalGenerator } {
 
         using namespace std::chrono;
-        beginValue = getValue();
+        beginValue = getNextValue();
         startTime = system_clock::now();
         lastTime = startTime;
         next();
@@ -63,8 +66,8 @@ struct Transition: TransitionBase {
 
 private:
     void next() {
-        transitionLength = Milliseconds(getInterval());
-        endValue = getValue();
+        transitionLength = Milliseconds(getNextInterval());
+        endValue = getNextValue();
     }
 
     Scalable beginValue, endValue;
