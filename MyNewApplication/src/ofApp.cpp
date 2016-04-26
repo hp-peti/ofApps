@@ -52,20 +52,20 @@ void ofApp::draw() {
     frameBuffer.draw(0, 0, ofGetWidth(), ofGetHeight());
 }
 
-void ofApp::clearLines() {
+void ofApp::clear() {
     if (lines.size()) {
-        undo.push_back(std::move(lines));
-        redo.clear();
+        undoStack.push_back(std::move(lines));
+        redoStack.clear();
         lines.clear();
         backgroundOpacity = 1;
     }
 }
 
-void ofApp::undoLines() {
-    if (undo.size()) {
-        redo.push_back(std::move(lines));
-        lines = std::move(undo.back());
-        undo.pop_back();
+void ofApp::undo() {
+    if (undoStack.size()) {
+        redoStack.push_back(std::move(lines));
+        lines = std::move(undoStack.back());
+        undoStack.pop_back();
         backgroundOpacity = .5;
     }
 }
@@ -83,16 +83,16 @@ void ofApp::keyPressed(int key) {
         break;
     case OF_KEY_DEL:
     case 'c':
-        clearLines();
+        clear();
         break;
     case 'z':
     case 'Z':
         if (isKeyPressed.control) {
             if (isKeyPressed.shift) {
-                redoLines();
+                redo();
                 break;
             }
-            undoLines();
+            undo();
             break;
         }
         break;
@@ -100,12 +100,12 @@ void ofApp::keyPressed(int key) {
     case OF_KEY_LEFT:
     case 'u':
     case 'U':
-        undoLines();
+        undo();
         break;
     case OF_KEY_RIGHT:
     case 'r':
     case 'R':
-        redoLines();
+        redo();
         break;
     case OF_KEY_SHIFT:
         isKeyPressed.shift = true;
@@ -159,13 +159,14 @@ void ofApp::mouseDragged(int x, int y, int button) {
 }
 
 void ofApp::saveUndo() {
-    undo.push_back(lines);
-    redo.clear();
+    undoStack.push_back(lines);
+    redoStack.clear();
 }
 
 void ofApp::mousePressed(int x, int y, int button) {
 
     if (button == OF_MOUSE_BUTTON_LEFT) {
+        // TODO: clean up
         Line::Properties::Ptr properties { };
         if (not lines.empty() and isKeyPressed.shift) {
             if (isKeyPressed.control) {
@@ -179,10 +180,12 @@ void ofApp::mousePressed(int x, int y, int button) {
         saveUndo();
         lines.emplace_back((float) x, (float) y, properties);
     } else if (button == OF_MOUSE_BUTTON_RIGHT or button == OF_MOUSE_BUTTON_MIDDLE) {
+        // TODO: clean up
         auto found = std::find_if(lines.rbegin(), lines.rend(), [x,y] (Line &line) {
             return line.contains( {(float)x, (float)y});
         });
         if (found != lines.rend()) {
+            // TODO: clean up
             saveUndo();
             bool isCopying { button == OF_MOUSE_BUTTON_RIGHT and isKeyPressed.shift };
             bool cloneNewProperties { isCopying and not isKeyPressed.control };
@@ -235,11 +238,11 @@ void ofApp::windowResized(int w, int h) {
     if (movingLine)
         movingLine->line.resize(proportion);
 
-    for (auto &lines : undo)
+    for (auto &lines : undoStack)
         for (auto &line : lines)
             line.resize(proportion);
 
-    for (auto &lines : redo)
+    for (auto &lines : redoStack)
         for (auto &line : lines)
             line.resize(proportion);
 }
@@ -252,11 +255,11 @@ void ofApp::dragEvent(ofDragInfo dragInfo) {
 
 }
 
-void ofApp::redoLines() {
-    if (redo.size()) {
-        undo.push_back(std::move(lines));
-        lines = std::move(redo.back());
-        redo.pop_back();
+void ofApp::redo() {
+    if (redoStack.size()) {
+        undoStack.push_back(std::move(lines));
+        lines = std::move(redoStack.back());
+        redoStack.pop_back();
         backgroundOpacity = .5;
     }
 }

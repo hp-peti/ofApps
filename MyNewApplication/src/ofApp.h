@@ -3,9 +3,11 @@
 #include "ofMain.h"
 
 #include <vector>
+#include <deque>
 
 #include "Transition.h"
 #include "getrandom.h"
+
 
 #include "Line.h"
 
@@ -31,11 +33,11 @@ public:
 private:
 
     using LineVector = std::vector<Line>;
-    using History = std::vector<LineVector>;
+    using History = std::deque<LineVector>;
 
     Transition<ofColor> color = { getRandomColor, getRandomLongInterval };
     LineVector lines;
-    History redo, undo;
+    History redoStack, undoStack;
 
     struct MovingLine {
         int button;
@@ -61,8 +63,8 @@ private:
 
     void saveUndo();
 
-    void clearLines();
-    void undoLines();
-    void redoLines();
+    void clear();
+    void undo();
+    void redo();
 };
 
