@@ -6,6 +6,7 @@
 #include <deque>
 
 #include "Transition.h"
+#include "KeyPressed.h"
 #include "getrandom.h"
 
 
@@ -51,9 +52,9 @@ private:
 
     float backgroundOpacity = 1;
     struct {
-        bool shift = false;
-        bool alt = false;
-        bool control = false;
+        KeyPressed shift   {OF_KEY_SHIFT};
+        KeyPressed alt     {OF_KEY_ALT};
+        KeyPressed control {OF_KEY_CONTROL};
     } isKeyPressed;
 
     void drawToFrameBuffer();

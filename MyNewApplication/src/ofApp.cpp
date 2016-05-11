@@ -107,30 +107,10 @@ void ofApp::keyPressed(int key) {
     case 'R':
         redo();
         break;
-    case OF_KEY_SHIFT:
-        isKeyPressed.shift = true;
-        break;
-    case OF_KEY_ALT:
-        isKeyPressed.alt = true;
-        break;
-    case OF_KEY_CONTROL:
-        isKeyPressed.control = true;
-        break;
     }
 }
 
 void ofApp::keyReleased(int key) {
-    switch (key) {
-    case OF_KEY_SHIFT:
-        isKeyPressed.shift = false;
-        break;
-    case OF_KEY_ALT:
-        isKeyPressed.alt = false;
-        break;
-    case OF_KEY_CONTROL:
-        isKeyPressed.control = false;
-        break;
-    }
 }
 
 void ofApp::mouseMoved(int x, int y) {

@@ -50,6 +50,9 @@
     <ClInclude Include="src\Transition.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="src\KeyPressed.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="icon.rc" />
