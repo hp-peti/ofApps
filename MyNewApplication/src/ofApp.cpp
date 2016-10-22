@@ -199,6 +199,18 @@ void ofApp::mouseExited(int x, int y) {
 
 }
 
+void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY) {
+    if (movingLine) {
+        double rate = 5;
+        if (isKeyPressed.alt) {
+            rate = 1;
+        } else if (isKeyPressed.control) {
+            rate = 15;
+        }
+        movingLine->line.rotate({ (float)x, (float)y }, rate * (scrollX + scrollY));
+    }
+}
+
 void ofApp::resizeFrameBuffer(int w, int h) {
     frameBuffer.clear();
     frameBuffer.allocate(w, h, GL_RGBA);

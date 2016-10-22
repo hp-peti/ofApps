@@ -85,6 +85,15 @@ struct Line {
         }
     }
 
+    void rotate(const ofVec2f &center, float degrees) {
+ 
+        for (auto &pt : points) {
+            auto p = pt.point - center;
+            p.rotate(degrees, {0,0,1});
+            pt.point = p + center;
+        }
+    }
+
     float width() const {
         return properties->width.get();
     }
