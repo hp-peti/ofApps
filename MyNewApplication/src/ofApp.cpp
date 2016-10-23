@@ -167,9 +167,9 @@ void ofApp::mousePressed(int x, int y, int button) {
         if (found != lines.rend()) {
             // TODO: clean up
             saveUndo();
-            bool isCopying { button == OF_MOUSE_BUTTON_RIGHT and isKeyPressed.shift };
-            bool cloneNewProperties { isCopying and not isKeyPressed.control };
-            bool isDeleting { button == OF_MOUSE_BUTTON_MIDDLE or (button == OF_MOUSE_BUTTON_RIGHT and isKeyPressed.control and not isKeyPressed.shift) };
+            bool isCopying { button == OF_MOUSE_BUTTON_RIGHT and isKeyPressed.shift and not isKeyPressed.alt };
+            bool cloneNewProperties { isCopying and not isKeyPressed.control and not isKeyPressed.alt };
+            bool isDeleting { button == OF_MOUSE_BUTTON_MIDDLE or (button == OF_MOUSE_BUTTON_RIGHT and isKeyPressed.control and not isKeyPressed.shift and not isKeyPressed.alt) };
             if (isDeleting) {
                 backgroundOpacity = .5;
             } else {
@@ -203,10 +203,12 @@ void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY) {
     if (movingLine) {
         double rate = 5;
         if (isKeyPressed.alt) {
-            rate = 1;
-        } else if (isKeyPressed.control) {
-            rate = 15;
-        }
+            if (isKeyPressed.control) {
+                rate = 15;
+            } else {
+                rate = 1;
+            }
+        } 
         movingLine->line.rotate({ (float)x, (float)y }, rate * (scrollX + scrollY));
     }
 }
