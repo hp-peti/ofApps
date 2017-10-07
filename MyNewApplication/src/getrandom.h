@@ -8,6 +8,7 @@
 #ifndef SRC_GETRANDOM_H_
 #define SRC_GETRANDOM_H_
 
+#include <ofPoint.h>
 #include <ofColor.h>
 
 float getRandomLongInterval();

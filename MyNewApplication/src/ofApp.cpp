@@ -27,7 +27,7 @@ void ofApp::updateBackgroundOpacity() {
 
 void ofApp::drawToFrameBuffer() {
     ofPushStyle();
-    frameBuffer.begin(true);
+    frameBuffer.begin();
     ofEnableAlphaBlending();
     ofEnableAntiAliasing();
     ofSetColor(color.get(), backgroundOpacity * 0xFF);

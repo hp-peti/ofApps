@@ -3,9 +3,6 @@
 	<storageModule moduleId="org.eclipse.cdt.core.settings">
 		<cconfiguration id="cc.openframeworks.configurations.debug">
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cc.openframeworks.configurations.debug" moduleId="org.eclipse.cdt.core.settings" name="Debug">
-				<macros>
-					<stringMacro name="OF_ROOT" type="VALUE_PATH_DIR" value="/home/hpp/eclipse/of_v0.9.2_linux64_release"/>
-				</macros>
 				<externalSettings/>
 				<extensions>
 					<extension id="org.eclipse.cdt.core.GNU_ELF" point="org.eclipse.cdt.core.BinaryParser"/>
@@ -41,16 +38,6 @@
 							</tool>
 						</toolChain>
 					</folderInfo>
-					<folderInfo id="cc.openframeworks.configurations.debug.2119152147" name="/" resourcePath="win">
-						<toolChain id="cdt.managedbuild.toolchain.gnu.base.342469665" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.base" unusedChildren="">
-							<tool id="cdt.managedbuild.tool.gnu.archiver.base.965345448" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base.1408975442"/>
-							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.base.1305863202" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.base.918966316"/>
-							<tool id="cdt.managedbuild.tool.gnu.c.compiler.base.1362016988" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.base.447928235"/>
-							<tool id="cdt.managedbuild.tool.gnu.c.linker.base.1216927170" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.base.1274640034"/>
-							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.base.2080513618" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.base.620315848"/>
-							<tool id="cdt.managedbuild.tool.gnu.assembler.base.103013233" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.base.1357079448"/>
-						</toolChain>
-					</folderInfo>
 					<sourceEntries>
 						<entry excluding="win|OF_ROOT/other|OF_ROOT/examples|OF_ROOT/apps" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
@@ -60,9 +47,6 @@
 		</cconfiguration>
 		<cconfiguration id="cc.openframeworks.configurations.release">
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cc.openframeworks.configurations.release" moduleId="org.eclipse.cdt.core.settings" name="Release">
-				<macros>
-					<stringMacro name="OF_ROOT" type="VALUE_PATH_DIR" value="/home/hpp/eclipse/of_v0.9.2_linux64_release"/>
-				</macros>
 				<externalSettings/>
 				<extensions>
 					<extension id="org.eclipse.cdt.core.GNU_ELF" point="org.eclipse.cdt.core.BinaryParser"/>
@@ -96,16 +80,6 @@
 							<tool id="cdt.managedbuild.tool.gnu.assembler.base.885056717" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.base">
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1150044526" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
-						</toolChain>
-					</folderInfo>
-					<folderInfo id="cc.openframeworks.configurations.release.1769422994" name="/" resourcePath="win">
-						<toolChain id="cdt.managedbuild.toolchain.gnu.base.292188301" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.base" unusedChildren="">
-							<tool id="cdt.managedbuild.tool.gnu.archiver.base.1521237960" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base.487157946"/>
-							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.base.259995335" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.base.1875878522"/>
-							<tool id="cdt.managedbuild.tool.gnu.c.compiler.base.306399214" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.base.1949687487"/>
-							<tool id="cdt.managedbuild.tool.gnu.c.linker.base.1047006973" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.base.1934229486"/>
-							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.base.946017932" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.base.1307935597"/>
-							<tool id="cdt.managedbuild.tool.gnu.assembler.base.1005407164" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.base.885056717"/>
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
