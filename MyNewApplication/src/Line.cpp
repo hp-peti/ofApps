@@ -18,15 +18,13 @@
 
 #include <ciso646>
 
-using Polyline = ofPolyline_<ofPoint>;
-
 inline
 float crossProduct(const ofVec2f &a, const ofVec2f &b) {
     return a.x * b.y - a.y * b.x;
 }
 
-template <class Container>
-void makeClosedCurvePolyLine(Container & points, Polyline *polyLine) {
+template <typename Container, typename PointPolyline>
+void makeClosedCurvePolyLine(Container & points, PointPolyline *polyLine) {
     polyLine->clear();
     for (auto& pt : points) {
         polyLine->curveTo(pt);
@@ -49,10 +47,12 @@ void drawPoly(Container & points) {
     ofEndShape();
 }
 
+using PointPolyline = ofPolyline_<ofPoint>;
+
 template <class Container>
 void drawClosedCurve(Container & points) {
 
-    Polyline poly { };
+    PointPolyline poly { };
     makeClosedCurvePolyLine(points, &poly);
     drawPoly(poly);
 }
@@ -182,7 +182,7 @@ bool Line::contains(const ofPoint &pt) {
         return points.back().get().distance(pt) <= properties->width.get() / 2;
     }
 
-    Polyline polyLine { };
+    PointPolyline polyLine { };
 
     if (isClosedCurve()) {
         makeClosedCurvePolyLine(points, &polyLine);
