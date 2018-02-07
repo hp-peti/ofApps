@@ -35,7 +35,8 @@ private:
 
     struct Tile {
         TileColor color = TileColor::White;
-        void draw(Images &) const;
+        void fill(Images &) const;
+        void draw() const;
         Tile(float x, float y, float radius);
         bool isPointInside(float x, float y) const;
         void changeColorUp() {

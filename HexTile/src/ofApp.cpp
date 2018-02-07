@@ -81,8 +81,7 @@ bool ofApp::Tile::isPointInside(float x, float y) const {
     return vertices.inside(x, y);
 }
 
-
-void ofApp::Tile::draw(Images &images) const {
+void ofApp::Tile::fill(Images &images) const {
     ofImage *img = nullptr;
     switch (color)
     {
@@ -120,15 +119,13 @@ void ofApp::Tile::draw(Images &images) const {
         ofEndShape();
         ofNoFill();
     }
+}
+
+void ofApp::Tile::draw() const
+{
     ofSetColor(20);
     ofSetLineWidth(2.0);
     vertices.draw();
-#if 0
-    ofSetColor(255,255,0);
-    ofSetLineWidth(1);
-    ofDrawRectangle(box);
-#endif
-
 }
 
 //--------------------------------------------------------------
@@ -138,7 +135,9 @@ void ofApp::draw() {
     ofEnableAntiAliasing();
 
     for (auto & tile : tiles)
-        tile.draw(images);
+        tile.fill(images);
+    for (auto & tile : tiles)
+        tile.draw();
 }
 
 
