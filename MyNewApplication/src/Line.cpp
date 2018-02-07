@@ -47,8 +47,11 @@ void drawPoly(Container & points) {
     ofEndShape();
 }
 
+#if OF_VERSION_MAJOR <= 9
+using PointPolyline = ofPolyline;
+#else
 using PointPolyline = ofPolyline_<ofPoint>;
-
+#endif
 template <class Container>
 void drawClosedCurve(Container & points) {
 

@@ -31,13 +31,17 @@ struct Transition: TransitionBase {
     Generator<float> getNextInterval;
 
     template <typename ValueFun, typename IntervalFun>
-    Transition(ValueFun valueGenerator, IntervalFun intervalGenerator) :
+    Transition(
+        ValueFun valueGenerator,
+        IntervalFun intervalGenerator,
+        Timestamp now = TransitionBase::clockNow()
+    ) :
         getNextValue { valueGenerator },
         getNextInterval { intervalGenerator } {
 
         using namespace std::chrono;
         beginValue = getNextValue();
-        startTime = system_clock::now();
+        startTime = now;
         lastTime = startTime;
         next();
     }
