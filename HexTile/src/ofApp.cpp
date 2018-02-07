@@ -1,10 +1,12 @@
 #include "ofApp.h"
 
+#include <ofFileUtils.h>
+
 #include <complex>
 #include <array>
 #include <algorithm>
 
-#include <ofFileUtils.h>
+#include <cmath>
 
 //--------------------------------------------------------------
 void ofApp::setup() {
@@ -81,27 +83,6 @@ bool ofApp::Tile::isPointInside(float x, float y) const {
 
 
 void ofApp::Tile::draw(Images &images) const {
-#if 0
-    switch (color)
-    {
-    case TileColor::White:
-        ofSetColor(255);
-        break;
-    case TileColor::Black:
-        ofSetColor(2);
-        break;
-    case TileColor::Gray:
-        ofSetColor(96);
-        break;
-    }
-    ofFill();
-    ofBeginShape();
-    for (auto &pt : vertices)
-    {
-        ofVertex(pt.x, pt.y);
-    }
-    ofEndShape();
-#else
     ofImage *img = nullptr;
     switch (color)
     {
@@ -115,14 +96,30 @@ void ofApp::Tile::draw(Images &images) const {
         img = &images.white;
         break;
     }
-    if (img != nullptr)
-    {
+    if (img != nullptr && img->isAllocated()) {
         ofSetColor(255);
         img->draw(box);
+    } else {
+        switch (color) {
+        case TileColor::White:
+            ofSetColor(255);
+            break;
+        case TileColor::Black:
+            ofSetColor(2);
+            break;
+        case TileColor::Gray:
+            ofSetColor(96);
+            break;
+        }
+        ofFill();
+        ofBeginShape();
+        for (auto &pt : vertices)
+        {
+            ofVertex(pt.x, pt.y);
+        }
+        ofEndShape();
+        ofNoFill();
     }
-
-#endif
-    ofNoFill();
     ofSetColor(20);
     ofSetLineWidth(2.0);
     vertices.draw();
@@ -137,6 +134,8 @@ void ofApp::Tile::draw(Images &images) const {
 //--------------------------------------------------------------
 void ofApp::draw() {
     ofClear(ofColor { 128, 128, 128 });
+    ofEnableSmoothing();
+    ofEnableAntiAliasing();
 
     for (auto & tile : tiles)
         tile.draw(images);

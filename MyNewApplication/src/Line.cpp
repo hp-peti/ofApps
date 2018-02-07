@@ -47,7 +47,7 @@ void drawPoly(Container & points) {
     ofEndShape();
 }
 
-#if OF_VERSION_MAJOR <= 9
+#if (OF_VERSION_MAJOR == 0) && (OF_VERSION_MINOR <= 9)
 using PointPolyline = ofPolyline;
 #else
 using PointPolyline = ofPolyline_<ofPoint>;
