@@ -10,6 +10,12 @@
 
 #include <ciso646>
 
+using std::chrono::duration_cast;
+using namespace std::chrono_literals;
+
+static constexpr auto ENABLE_DURATION = 500ms;
+static constexpr auto DISABLE_DURATION = 500ms;
+
 //--------------------------------------------------------------
 void ofApp::setup()
 {
@@ -107,18 +113,18 @@ void ofApp::Tile::fill(Images &images) const
         break;
     }
     if (img != nullptr and img->isAllocated()) {
-        ofSetColor(255);
+        ofSetColor(255, 255, 255, 255 * alpha);
         img->draw(box);
     } else {
         switch (color) {
         case TileColor::White:
-            ofSetColor(255);
+            ofSetColor(255, 255, 255, 255 * alpha);
             break;
         case TileColor::Black:
-            ofSetColor(2);
+            ofSetColor(2, 2, 2, 255 * alpha);
             break;
         case TileColor::Gray:
-            ofSetColor(96);
+            ofSetColor(96, 96, 96, 255 * alpha);
             break;
         }
         fill();
@@ -130,10 +136,29 @@ void ofApp::Tile::draw() const
     vertices.draw();
 }
 
-//--------------------------------------------------------------
-void ofApp::draw()
+void ofApp::Tile::drawCubeIllusion()
 {
-    if (concrete.isAllocated()) {
+    const ofPoint c(center.x, center.y);
+
+    switch (orientation)
+    {
+    case Orientation::Blank:
+        break;
+    case Orientation::Odd:
+        for (auto i: {1,3,5})
+            ofDrawLine(c, vertices[i]);
+        break;
+    case Orientation::Even:
+        for (auto i: {0,2,4})
+            ofDrawLine(c, vertices[i]);
+        break;
+    }
+}
+
+void ofApp::drawBackground()
+{
+    if (concrete.isAllocated())
+    {
         ofSetColor(200);
         ofRectangle winrect = ofGetWindowRect();
         const auto xinc = concrete.getWidth();
@@ -141,38 +166,66 @@ void ofApp::draw()
         for (float x = 0; x < winrect.width; x += xinc)
             for (float y = 0; y < winrect.width; y += yinc)
                 concrete.draw(x, y, xinc, yinc);
-    } else {
+    }
+    else
+    {
         ofClear(ofColor { 128, 128, 128 });
     }
+}
+
+void ofApp::drawShadows()
+{
+    ofSetLineWidth(5);
+    ofPushMatrix();
+    ofTranslate(1.f, 1.f);
+    for (auto& tile : tiles)
+    {
+        if (tile.enabled || tile.in_transition)
+        {
+            ofSetColor(ofColor(0, 0, 0, 128 * tile.alpha));
+            tile.draw();
+        }
+    }
+    ofPopMatrix();
+}
+
+//--------------------------------------------------------------
+void ofApp::draw()
+{
+    auto now = Clock::now();
+
+    drawBackground();
 
     ofEnableSmoothing();
     ofEnableAntiAliasing();
     ofEnableAlphaBlending();
 
-    ofSetColor(ofColor(0,0,0,128));
-    ofSetLineWidth(5);
-    ofPushMatrix();
-    ofTranslate(1.f,1.f);
     for (auto & tile : tiles)
-        if (tile.enabled)
-            tile.draw();
-    ofPopMatrix();
-    for (auto & tile : tiles)
-        if (tile.enabled)
-            tile.fill(images);
+       tile.update_alpha(now);
 
-    ofSetColor(20,20,20,160);
+    drawShadows();
+
+    for (auto & tile : tiles) {
+        if (tile.isVisible()) {
+            tile.fill(images);
+        }
+    }
+
     ofSetLineWidth(2.5);
     for (auto & tile : tiles)
-        if (tile.enabled)
+        if (tile.isVisible()) {
+            ofSetColor(20,20,20,160 * tile.alpha);
             tile.draw();
+            tile.drawCubeIllusion();
+        }
 
     if (currentTile != nullptr) {
-        if (currentTile->enabled) {
-            ofSetColor(getFocusColor(128));
+        if (currentTile->enabled or currentTile->in_transition) {
+            ofSetColor(getFocusColor(128, currentTile->alpha));
             currentTile->fill();
-        } else {
-            ofSetColor(getFocusColor(255));
+        }
+        if (not currentTile->enabled or currentTile->in_transition) {
+            ofSetColor(getFocusColor(255, 1 - currentTile->alpha));
             ofSetLineWidth(1.5);
             currentTile->draw();
         }
@@ -182,6 +235,8 @@ void ofApp::draw()
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key)
 {
+    auto now = Clock::now();
+
     switch (key) {
     case 'i':
     case 'I':
@@ -198,7 +253,7 @@ void ofApp::keyPressed(int key)
         } else {
             for (auto &tile : tiles) {
                 tile.color = TileColor::White;
-                tile.enabled = true;
+                tile.start_enabling(now);
             }
         }
         break;
@@ -211,7 +266,7 @@ void ofApp::keyPressed(int key)
         } else {
             for (auto &tile : tiles) {
                 tile.color = TileColor::Black;
-                tile.enabled = true;
+                tile.start_enabling(now);
             }
         }
         break;
@@ -219,8 +274,7 @@ void ofApp::keyPressed(int key)
     case 'C':
         if (ofGetKeyPressed(OF_KEY_SHIFT)) {
             for (auto &tile : tiles) {
-                tile.color = TileColor::White;
-                tile.enabled = false;
+                tile.start_disabling(now);
             }
         }
         break;
@@ -233,22 +287,35 @@ void ofApp::keyPressed(int key)
         } else {
             for (auto &tile : tiles) {
                 tile.color = TileColor::Gray;
-                tile.enabled = true;
+                tile.start_enabling(now);
             }
         }
         break;
     case 'r':
     case 'R':
-        if (not ofGetKeyPressed(OF_KEY_SHIFT)) {
-            for (auto &tile : tiles)
-                if (tile.enabled)
-                    tile.changeColorUp();
+        if (not ofGetKeyPressed(OF_KEY_CONTROL)) {
+            if (not ofGetKeyPressed(OF_KEY_SHIFT)) {
+                for (auto &tile : tiles)
+                    if (tile.enabled)
+                        tile.changeColorUp(now);
+            } else {
+                for (auto &tile : tiles)
+                    if (tile.enabled)
+                        tile.changeColorDown(now);
+            }
+            break;
         } else {
-            for (auto &tile : tiles)
-                if (tile.enabled)
-                    tile.changeColorDown();
+            if (not ofGetKeyPressed(OF_KEY_SHIFT)) {
+                for (auto &tile : tiles)
+                    if (tile.enabled)
+                        tile.changeToRandomColor(now);
+            } else {
+                for (auto &tile : tiles) {
+                   tile.changeToRandomColor(now);
+                }
+            }
+            break;
         }
-        break;
     case 'f':
     case 'F':
         ofToggleFullscreen();
@@ -280,27 +347,55 @@ void ofApp::mousePressed(int x, int y, int button)
     findCurrentTile(x, y);
 
     if (currentTile != nullptr) {
+        auto now = Clock::now();
         switch (button) {
         case OF_MOUSE_BUTTON_LEFT:
             if (not ofGetKeyPressed(OF_KEY_SHIFT))
-                currentTile->changeColorUp();
+                currentTile->changeColorUp(now);
             else
-                currentTile->changeColorDown();
-            resetStartTime();
+                currentTile->changeColorDown(now);
+            resetFocusStartTime();
             break;
         case OF_MOUSE_BUTTON_RIGHT:
             if (currentTile->enabled) {
-                currentTile->enabled = false;
-                resetStartTime();
+                currentTile->start_disabling(now);
+                resetFocusStartTime();
             }
             break;
         case OF_MOUSE_BUTTON_MIDDLE:
-            currentTile->invertColor();
-            resetStartTime();
+            currentTile->removeOrientation();
+            resetFocusStartTime();
             break;
         }
     }
 }
+
+void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY)
+{
+    if (not ofGetKeyPressed(OF_KEY_SHIFT)) {
+        findCurrentTile(x, y);
+
+        if (currentTile != nullptr and currentTile->isVisible()) {
+            if (scrollY > 0)
+                currentTile->changeOrientationUp();
+
+            if (scrollY < 0)
+                currentTile->changeOrientationDown();
+        }
+    } else {
+
+        if (scrollY > 0)
+            for (auto &tile : tiles)
+                if (tile.isVisible())
+                    tile.changeOrientationUp();
+
+        if (scrollY < 0)
+            for (auto &tile : tiles)
+                if (tile.isVisible())
+                    tile.changeOrientationDown();
+    }
+}
+
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button)
@@ -353,19 +448,19 @@ ofApp::Tile* ofApp::findTile(float x, float y)
     return &*found;
 }
 
-ofColor ofApp::getFocusColor(int gray)
+ofColor ofApp::getFocusColor(int gray, float alpha)
 {
-    auto diff = std::chrono::system_clock::now() - start_time;
-    auto elapsed_seconds = std::chrono::duration_cast<std::chrono::duration<float>>(diff).count();
+    auto diff = Clock::now() - focus_start;
+    auto elapsed_seconds = duration_cast<FloatSeconds>(diff);
 
-    auto a = (unsigned char) (128 * (-cos(M_PI * elapsed_seconds) / 2 + .5));
+    auto a = (unsigned char) (128 * (-cos(M_PI * elapsed_seconds.count()) / 2 + .5));
 
-    return ofColor(gray, gray, gray, a);
+    return ofColor(gray, gray, gray, a * alpha);
 }
 
-void ofApp::resetStartTime()
+void ofApp::resetFocusStartTime()
 {
-    start_time = std::chrono::system_clock::now();
+    focus_start = Clock::now();
 }
 
 void ofApp::findCurrentTile(float x, float y)
@@ -373,8 +468,52 @@ void ofApp::findCurrentTile(float x, float y)
     currentTile = findTile(x, y);
     if (currentTile != nullptr and currentTile != previousTile)
     {
-        resetStartTime();
+        resetFocusStartTime();
     }
     previousTile = currentTile;
 
+}
+
+void ofApp::Tile::update_alpha(const TimeStamp& now)
+{
+    if (not in_transition)
+        return;
+
+    const float final_alpha = enabled ? 1 : 0;
+
+    if ((now - alpha_stop).count() > 0) {
+        in_transition = false;
+        alpha = final_alpha;
+        return;
+    }
+
+    auto from_start = duration_cast<FloatSeconds>(now - alpha_start);
+    auto total = duration_cast<FloatSeconds>(alpha_stop - alpha_start);
+
+    float progress = from_start.count() / total.count();
+    alpha = initial_alpha * (1 - progress) + final_alpha * progress;
+}
+
+void ofApp::Tile::start_enabling(const TimeStamp& now)
+{
+    if (enabled)
+        return;
+    enabled = true;
+    in_transition = true;
+    initial_alpha = alpha;
+    alpha_start = now;
+    alpha_stop = now + ENABLE_DURATION;
+    update_alpha(now);
+}
+
+void ofApp::Tile::start_disabling(const TimeStamp& now)
+{
+    if (not enabled)
+        return;
+    enabled = false;
+    in_transition = true;
+    initial_alpha = alpha;
+    alpha_start = now;
+    alpha_stop = now + DISABLE_DURATION;
+    update_alpha(now);
 }
