@@ -13,7 +13,7 @@
 //--------------------------------------------------------------
 void ofApp::setup()
 {
-
+    ofSetWindowTitle("HexTile");
     auto imagefile = [](auto file) {
         static const auto images = ofFilePath::join(ofFilePath::getCurrentExeDir(), "images");
         return ofFilePath::join(images,file);
