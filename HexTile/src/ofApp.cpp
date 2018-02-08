@@ -173,7 +173,7 @@ void ofApp::draw()
             currentTile->fill();
         } else {
             ofSetColor(getFocusColor(255));
-            ofSetLineWidth(4);
+            ofSetLineWidth(1.5);
             currentTile->draw();
         }
     }
