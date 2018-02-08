@@ -3,8 +3,10 @@
 #include "ofMain.h"
 
 #include <vector>
+#include <chrono>
 
-class ofApp: public ofBaseApp {
+class ofApp: public ofBaseApp
+{
 
 public:
     void setup();
@@ -23,37 +25,74 @@ public:
     void dragEvent(ofDragInfo dragInfo);
     void gotMessage(ofMessage msg);
 private:
-    enum class TileColor {
+    enum class TileColor
+    {
         Black,
         Gray,
         White,
     };
 
-    struct Images {
+    ofImage concrete;
+
+    struct Images
+    {
         ofImage black, grey, white;
     };
 
-    struct Tile {
+    struct Tile
+    {
         TileColor color = TileColor::White;
+        bool enabled = false;
+
+        void fill() const;
         void fill(Images &) const;
         void draw() const;
         Tile(float x, float y, float radius);
         bool isPointInside(float x, float y) const;
-        void changeColorUp() {
-            color = (TileColor) (((int)color + 1) % 3);
+
+        void changeColorUp()
+        {
+            if (!enabled) {
+                enabled = true;
+                return;
+            }
+            color = (TileColor) (((int) color + 1) % 3);
         }
-        void changeColorDown() {
-            color = (TileColor) (((int)color + 2) % 3);
+        void changeColorDown()
+        {
+            if (!enabled) {
+                enabled = true;
+                return;
+            }
+            color = (TileColor) (((int) color + 2) % 3);
         }
-        void invertColor() {
-            color = (TileColor) (2 - (int)color);
+        void invertColor()
+        {
+            if (!enabled) {
+                enabled = true;
+                return;
+            }
+            color = (TileColor) (2 - (int) color);
         }
     private:
         ofPolyline vertices;
-        ofVec2f center; float radius;
+        ofVec2f center;
+        float radius;
         ofRectangle box;
+
     };
+
+    ofColor getFocusColor(int);
+    Tile* findTile(float x, float y);
+
+    void findCurrentTile(float x, float y);
+    void resetStartTime();
 
     std::vector<Tile> tiles;
     Images images;
+
+    Tile* currentTile = nullptr;
+    Tile* previousTile = nullptr;
+
+    std::chrono::system_clock::time_point start_time = std::chrono::system_clock::now();
 };
