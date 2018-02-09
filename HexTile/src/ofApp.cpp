@@ -27,9 +27,14 @@ void ofApp::setup()
 
     concrete.load(imagefile("concrete.jpg"));
 
-    images.black.load(imagefile("black.png"));
-    images.grey.load(imagefile("grey.png"));
-    images.white.load(imagefile("white.png"));
+    tileImages.black.load(imagefile("black.png"));
+    tileImages.grey.load(imagefile("grey.png"));
+    tileImages.white.load(imagefile("white.png"));
+
+    sticky.images.resize(4);
+    for (auto i : {0, 1, 2})
+        sticky.images[i].load(imagefile("sticky" + std::to_string(i) + ".png"));
+    sticky.images[3] = sticky.images[1];
 
     const float radius = 50.0;
     const float row_height = radius * std::sin(M_PI / 3);
@@ -98,7 +103,7 @@ void ofApp::Tile::fill() const
     ofNoFill();
 }
 
-void ofApp::Tile::fill(Images &images) const
+void ofApp::Tile::fill(TileImages &images) const
 {
     ofImage *img = nullptr;
     switch (color) {
@@ -207,7 +212,7 @@ void ofApp::draw()
 
     for (auto & tile : tiles) {
         if (tile.isVisible()) {
-            tile.fill(images);
+            tile.fill(tileImages);
         }
     }
 
@@ -229,6 +234,11 @@ void ofApp::draw()
             ofSetLineWidth(1.5);
             currentTile->draw();
         }
+    }
+
+    if (sticky.visible) {
+        ofSetColor(255);
+        sticky.draw();
     }
 }
 
@@ -253,6 +263,8 @@ void ofApp::keyPressed(int key)
         } else {
             for (auto &tile : tiles) {
                 tile.color = TileColor::White;
+                if (!tile.isVisible())
+                    tile.orientation = Orientation::Blank;
                 tile.start_enabling(now);
             }
         }
@@ -266,6 +278,8 @@ void ofApp::keyPressed(int key)
         } else {
             for (auto &tile : tiles) {
                 tile.color = TileColor::Black;
+                if (!tile.isVisible())
+                    tile.orientation = Orientation::Blank;
                 tile.start_enabling(now);
             }
         }
@@ -287,6 +301,8 @@ void ofApp::keyPressed(int key)
         } else {
             for (auto &tile : tiles) {
                 tile.color = TileColor::Gray;
+                if (!tile.isVisible())
+                    tile.orientation = Orientation::Blank;
                 tile.start_enabling(now);
             }
         }
@@ -316,9 +332,51 @@ void ofApp::keyPressed(int key)
             }
             break;
         }
+    case 'O':
+    case 'o':
+        if (not ofGetKeyPressed(OF_KEY_CONTROL)) {
+            if (not ofGetKeyPressed(OF_KEY_SHIFT)) {
+                for (auto &tile : tiles)
+                    if (tile.enabled and tile.orientation != Orientation::Blank)
+                        tile.changeOrientationUp();
+            } else {
+                for (auto &tile : tiles)
+                    if (tile.enabled and tile.orientation != Orientation::Blank)
+                        tile.changeOrientationDown();
+            }
+            break;
+        } else {
+            if (not ofGetKeyPressed(OF_KEY_SHIFT)) {
+                for (auto &tile : tiles)
+                    if (tile.enabled and tile.orientation != Orientation::Blank)
+                        tile.changeToRandomNonBlankOrientation();
+            } else {
+                for (auto &tile : tiles) {
+                    if (tile.enabled)
+                        tile.changeToRandomOrientation();
+                }
+            }
+            break;
+        }
     case 'f':
     case 'F':
         ofToggleFullscreen();
+        break;
+    case 'S':
+    case 's':
+        sticky.visible = not sticky.visible;
+        if (sticky.visible)
+            ofHideCursor();
+        else
+            ofShowCursor();
+        break;
+    case OF_KEY_RIGHT:
+        if (sticky.direction >= 0)
+            ++sticky.direction %= 6;
+        break;
+    case OF_KEY_LEFT:
+        if (sticky.direction >= 0)
+        (sticky.direction+= 5) %= 6;
         break;
     }
 }
@@ -329,16 +387,28 @@ void ofApp::keyReleased(int key)
 
 }
 
+void ofApp::updateSticky(int x, int y)
+{
+    sticky.pos = ofVec2f { (float) (x), (float) (y) };
+    if (sticky.visible) {
+        if (currentTile != nullptr) {
+            sticky.adjustDirection(*currentTile);
+        }
+    }
+}
+
 //--------------------------------------------------------------
 void ofApp::mouseMoved(int x, int y)
 {
     findCurrentTile(x, y);
+    updateSticky(x, y);
 }
 
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button)
 {
     findCurrentTile(x, y);
+    updateSticky(x, y);
 }
 
 //--------------------------------------------------------------
@@ -368,6 +438,7 @@ void ofApp::mousePressed(int x, int y, int button)
             break;
         }
     }
+    updateSticky(x, y);
 }
 
 void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY)
@@ -394,6 +465,7 @@ void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY)
                 if (tile.isVisible())
                     tile.changeOrientationDown();
     }
+    updateSticky(x, y);
 }
 
 
@@ -516,4 +588,59 @@ void ofApp::Tile::start_disabling(const TimeStamp& now)
     alpha_start = now;
     alpha_stop = now + DISABLE_DURATION;
     update_alpha(now);
+}
+
+void ofApp::Sticky::draw()
+{
+    static const float small = std::sin(M_PI/3);
+
+    ofPushMatrix();
+    ofTranslate(pos.x, pos.y);
+    if (direction >= 0) {
+        ofRotate(90 + 60 * direction);
+        if (flip)
+            ofScale(1, -1);
+        ofScale(small, small);
+    }
+    const auto &image = images[(++step %= images.size()*10)/10];
+    const float w = image.getWidth();
+    const float h = image.getHeight();
+    image.draw( -w / 2, h * .125 - h, w, h);
+
+    ofPopMatrix();
+}
+
+void ofApp::Sticky::adjustDirection(const Tile& tile)
+{
+    auto adjust_by_closest_vertex_index = [this, &tile](std::initializer_list<int> indices) {
+        auto dist2min = tile.radiusSquared() * 4;
+        int imin = -1;
+        for (auto i : indices) {
+            auto dist2 = tile.squareDistanceFromVertex(pos, i);
+            if (dist2 <= dist2min) {
+                dist2min = dist2;
+                imin = i;
+            }
+        }
+        if (imin < 0) {
+            direction = -1;
+            return;
+        }
+        direction = imin;
+        flip = dist2min <= tile.squareDistanceFromCenter(pos);
+    };
+
+    if (tile.isVisible()) {
+        if (tile.orientation == Orientation::Even) {
+            adjust_by_closest_vertex_index({1,3,5});
+
+        } else if(tile.orientation == Orientation::Odd) {
+            adjust_by_closest_vertex_index({0,2,4});
+        } else {
+            direction = -1;
+        }
+    } else {
+        direction = -1;
+    }
+
 }

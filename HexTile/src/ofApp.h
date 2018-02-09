@@ -43,7 +43,7 @@ private:
 
     ofImage concrete;
 
-    struct Images
+    struct TileImages
     {
         ofImage black, grey, white;
     };
@@ -72,7 +72,7 @@ private:
         void start_disabling(const TimeStamp &now);
 
         void fill() const;
-        void fill(Images &) const;
+        void fill(TileImages &) const;
         void draw() const;
         void drawCubeIllusion();
         void removeOrientation() { orientation = Orientation::Blank; }
@@ -92,6 +92,16 @@ private:
                 color = (TileColor)(int)roundf(ofRandom(2));
             if (!enabled)
                 start_enabling(now);
+        }
+        void changeToRandomOrientation()
+        {
+            if (!in_transition)
+                orientation = (Orientation)(int)roundf(ofRandom(2));
+        }
+        void changeToRandomNonBlankOrientation()
+        {
+            if (!in_transition)
+                orientation = (Orientation)(1 + (int)roundf(ofRandom(1)));
         }
 
         void changeColorUp(const TimeStamp &now)
@@ -127,6 +137,16 @@ private:
             }
             color = (TileColor) (2 - (int) color);
         }
+
+        float squareDistanceFromVertex(const ofVec2f &pt, int i) const {
+            return ofVec2f{vertices[i].x, vertices[i].y}.squareDistance(pt);
+        }
+        float squareDistanceFromCenter(const ofVec2f &pt) const {
+            return center.squareDistance(pt);
+        }
+
+        float radiusSquared() const { return radius * radius; }
+
     private:
         ofPolyline vertices;
         ofVec2f center;
@@ -138,14 +158,29 @@ private:
     ofColor getFocusColor(int gray, float alpha);
     Tile* findTile(float x, float y);
 
+    struct Sticky
+    {
+        bool visible = false;
+        ofVec2f pos;
+        int direction = -1;
+        bool flip = false;
+        int step = 0;
+        std::vector<ofImage> images;
+
+        void draw();
+        void adjustDirection(const Tile &tile);
+    };
+
+
     void findCurrentTile(float x, float y);
     void resetFocusStartTime();
     void drawBackground();
     void drawShadows();
-
+    void updateSticky(int x, int y);
 
     std::vector<Tile> tiles;
-    Images images;
+    TileImages tileImages;
+    Sticky sticky;
 
     Tile* currentTile = nullptr;
     Tile* previousTile = nullptr;
