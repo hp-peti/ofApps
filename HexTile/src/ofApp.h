@@ -89,26 +89,23 @@ private:
 
         void changeToRandomColor(const TimeStamp &now)
         {
-            if (!in_transition)
-                color = (TileColor)(int)roundf(ofRandom(2));
+            color = (TileColor)(int)roundf(ofRandom(2));
             if (!enabled)
                 start_enabling(now);
         }
         void changeToRandomOrientation()
         {
-            if (!in_transition)
-                orientation = (Orientation)(int)roundf(ofRandom(2));
+            orientation = (Orientation)(int)roundf(ofRandom(2));
         }
         void changeToRandomNonBlankOrientation()
         {
-            if (!in_transition)
-                orientation = (Orientation)(1 + (int)roundf(ofRandom(1)));
+            orientation = (Orientation)(1 + (int)roundf(ofRandom(1)));
         }
 
         void changeColorUp(const TimeStamp &now)
         {
             if (!enabled) {
-                if (!in_transition) {
+                if (!in_transition ) {
                     color = TileColor::White;
                     orientation = Orientation::Blank;
                 }
@@ -154,10 +151,15 @@ private:
         float radius;
         ofRectangle box;
 
+        bool isDisabling()
+        {
+            return in_transition && !enabled;
+        }
     };
 
+    float getFocusAlpha(FloatSeconds period);
     ofColor getFocusColor(int gray, float alpha);
-    ofColor getFocusColor(ofColor alpha, ofColor beta, float period = 1);
+    ofColor getFocusColorMix(ofColor alpha, ofColor beta, FloatSeconds period);
     Tile* findTile(float x, float y);
 
     struct Sticky
@@ -166,17 +168,23 @@ private:
         ofVec2f pos;
         int direction = -1;
         bool flip = false;
-        int step = 0;
+        int step() { return stepIndex; }
         std::vector<ofImage> images;
+        bool show_arrow = false;
+
+        void updateStep(const TimeStamp &now);
+        void adjustDirection(const Tile &tile);
+
+        std::complex<float> getDirectionVector() const;
 
         void draw();
-        void adjustDirection(const Tile &tile);
         void drawArrow(float length, const float arrowhead);
         void drawNormal(float length, const float arrowhead);
 
-        bool show_arrow = false;
 
-        std::complex<float> getDirectionVector() const;
+    private:
+        int stepIndex = 0;
+        TimeStamp lastStep;
     };
 
 
@@ -184,7 +192,9 @@ private:
     void resetFocusStartTime();
     void drawBackground();
     void drawShadows();
+    void updateSticky() { updateSticky(ofGetMouseX(), ofGetMouseY()); }
     void updateSticky(int x, int y);
+    void drawSticky();
 
     std::vector<Tile> tiles;
     TileImages tileImages;
