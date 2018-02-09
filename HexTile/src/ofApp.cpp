@@ -2,7 +2,6 @@
 
 #include <ofFileUtils.h>
 
-#include <complex>
 #include <array>
 #include <algorithm>
 
@@ -10,11 +9,30 @@
 
 #include <ciso646>
 
+using std::array;
+using std::complex;
 using std::chrono::duration_cast;
 using namespace std::chrono_literals;
 
 static constexpr auto ENABLE_DURATION = 500ms;
 static constexpr auto DISABLE_DURATION = 500ms;
+
+template <typename T>
+inline ofVec2f toVec2f(const complex<T> &vec)
+{
+    return ofVec2f(vec.real(), vec.imag());
+}
+
+template <typename T>
+inline ofVec3f toVec3f(const complex<T> &vec)
+{
+    return ofVec3f(vec.real(), vec.imag());
+}
+
+inline ofVec3f toVec3f(const ofVec2f &vec)
+{
+    return ofVec3f(vec.x, vec.y);
+}
 
 //--------------------------------------------------------------
 void ofApp::setup()
@@ -56,15 +74,14 @@ void ofApp::setup()
 //--------------------------------------------------------------
 void ofApp::update()
 {
-
 }
 static auto make_unit_roots()
 {
-    std::array<std::complex<float>, 6> roots { };
+    array<complex<float>, 6> roots { };
 
     // e^(i*x) = cos(x) + i * sin(x)
     for (size_t i = 0; i < roots.size(); ++i)
-        roots[i] = std::exp(std::complex<float>(0, i * M_PI / 3));
+        roots[i] = exp(complex<float>(0, i * M_PI / 3));
 
     return roots;
 }
@@ -73,7 +90,6 @@ ofApp::Tile::Tile(float x, float y, float radius) :
     center(x, y),
     radius(radius)
 {
-
     static const auto roots = make_unit_roots();
     for (int i = 0; i < 6; ++i) {
         const float vx = x + radius * roots[i].real();
@@ -194,7 +210,6 @@ void ofApp::drawShadows()
     ofPopMatrix();
 }
 
-//--------------------------------------------------------------
 void ofApp::draw()
 {
     auto now = Clock::now();
@@ -240,23 +255,51 @@ void ofApp::draw()
         ofSetColor(255);
         sticky.draw();
     }
+    if (sticky.show_arrow) {
+        ofSetLineWidth(2);
+        ofSetColor(getFocusColor(ofColor(32,32,32,196),
+                                 ofColor(160,160,160,240),
+                                 2));
+
+        if (sticky.visible) {
+            sticky.drawArrow(25 + sticky.step / 5.0, 10);
+        } else {
+            sticky.drawNormal(50, 15);
+        }
+    }
 }
+
+constexpr int KEY_CTRL_(const char ch)
+{
+    return ch >= 'A' && ch <= 'Z' ? ch - 'A' + 1 : ch;
+}
+
+static const auto shift = []() { return ofGetKeyPressed(OF_KEY_SHIFT); };
+static const auto ctrl_or_alt = []() { return    ofGetKeyPressed(OF_KEY_CONTROL)
+                                              or ofGetKeyPressed(OF_KEY_ALT)
+                                              or ofGetKeyPressed(OF_KEY_LEFT_ALT)
+                                              or ofGetKeyPressed(OF_KEY_RIGHT_ALT)
+                                              or ofGetKeyPressed(OF_KEY_COMMAND); };
+
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key)
 {
     auto now = Clock::now();
 
+    
     switch (key) {
+    case KEY_CTRL_('I'):
     case 'i':
     case 'I':
         for (auto &tile : tiles)
             if (tile.enabled)
                 tile.invertColor();
         break;
+    case KEY_CTRL_('W'):
     case 'W':
     case 'w':
-        if (not ofGetKeyPressed(OF_KEY_SHIFT)) {
+        if (not shift()) {
             for (auto &tile : tiles)
                 if (tile.enabled)
                     tile.color = TileColor::White;
@@ -269,9 +312,10 @@ void ofApp::keyPressed(int key)
             }
         }
         break;
+    case KEY_CTRL_('B'):
     case 'B':
     case 'b':
-        if (not ofGetKeyPressed(OF_KEY_SHIFT)) {
+        if (not shift()) {
             for (auto &tile : tiles)
                 if (tile.enabled)
                     tile.color = TileColor::Black;
@@ -286,15 +330,16 @@ void ofApp::keyPressed(int key)
         break;
     case 'c':
     case 'C':
-        if (ofGetKeyPressed(OF_KEY_SHIFT)) {
+        if (shift()) {
             for (auto &tile : tiles) {
                 tile.start_disabling(now);
             }
         }
         break;
+    case KEY_CTRL_('G'):
     case 'G':
     case 'g':
-        if (not ofGetKeyPressed(OF_KEY_SHIFT)) {
+        if (not shift()) {
             for (auto &tile : tiles)
                 if (tile.enabled)
                     tile.color = TileColor::Gray;
@@ -307,10 +352,11 @@ void ofApp::keyPressed(int key)
             }
         }
         break;
+    case KEY_CTRL_('R'):
     case 'r':
     case 'R':
-        if (not ofGetKeyPressed(OF_KEY_CONTROL)) {
-            if (not ofGetKeyPressed(OF_KEY_SHIFT)) {
+        if (not ctrl_or_alt()) {
+            if (not shift()) {
                 for (auto &tile : tiles)
                     if (tile.enabled)
                         tile.changeColorUp(now);
@@ -321,7 +367,7 @@ void ofApp::keyPressed(int key)
             }
             break;
         } else {
-            if (not ofGetKeyPressed(OF_KEY_SHIFT)) {
+            if (not shift()) {
                 for (auto &tile : tiles)
                     if (tile.enabled)
                         tile.changeToRandomColor(now);
@@ -332,10 +378,11 @@ void ofApp::keyPressed(int key)
             }
             break;
         }
+    case KEY_CTRL_('O'):
     case 'O':
     case 'o':
-        if (not ofGetKeyPressed(OF_KEY_CONTROL)) {
-            if (not ofGetKeyPressed(OF_KEY_SHIFT)) {
+        if (not ctrl_or_alt()) {
+            if (not shift()) {
                 for (auto &tile : tiles)
                     if (tile.enabled and tile.orientation != Orientation::Blank)
                         tile.changeOrientationUp();
@@ -346,7 +393,7 @@ void ofApp::keyPressed(int key)
             }
             break;
         } else {
-            if (not ofGetKeyPressed(OF_KEY_SHIFT)) {
+            if (not shift()) {
                 for (auto &tile : tiles)
                     if (tile.enabled and tile.orientation != Orientation::Blank)
                         tile.changeToRandomNonBlankOrientation();
@@ -358,6 +405,7 @@ void ofApp::keyPressed(int key)
             }
             break;
         }
+    case KEY_CTRL_('F'):
     case 'f':
     case 'F':
         ofToggleFullscreen();
@@ -370,6 +418,11 @@ void ofApp::keyPressed(int key)
         else
             ofShowCursor();
         break;
+    case 'A':
+    case 'a':
+    case KEY_CTRL_('A'):
+        sticky.show_arrow = not sticky.show_arrow;
+        break;
     case OF_KEY_RIGHT:
         if (sticky.direction >= 0)
             ++sticky.direction %= 6;
@@ -379,6 +432,11 @@ void ofApp::keyPressed(int key)
         (sticky.direction+= 5) %= 6;
         break;
     }
+#if defined (_WIN32) //&& defined(_DEBUG)
+    char str[256];
+    sprintf(str, "key pressed: 0x%.2x (%c)", key, key);
+    OutputDebugStringA(str);
+#endif
 }
 
 //--------------------------------------------------------------
@@ -390,7 +448,7 @@ void ofApp::keyReleased(int key)
 void ofApp::updateSticky(int x, int y)
 {
     sticky.pos = ofVec2f { (float) (x), (float) (y) };
-    if (sticky.visible) {
+    if (sticky.visible or sticky.show_arrow) {
         if (currentTile != nullptr) {
             sticky.adjustDirection(*currentTile);
         }
@@ -420,7 +478,7 @@ void ofApp::mousePressed(int x, int y, int button)
         auto now = Clock::now();
         switch (button) {
         case OF_MOUSE_BUTTON_LEFT:
-            if (not ofGetKeyPressed(OF_KEY_SHIFT))
+            if (not shift())
                 currentTile->changeColorUp(now);
             else
                 currentTile->changeColorDown(now);
@@ -443,8 +501,8 @@ void ofApp::mousePressed(int x, int y, int button)
 
 void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY)
 {
-    if (not ofGetKeyPressed(OF_KEY_SHIFT)) {
-        findCurrentTile(x, y);
+    findCurrentTile(x, y);
+    if (not shift()) {
 
         if (currentTile != nullptr and currentTile->isVisible()) {
             if (scrollY > 0)
@@ -520,6 +578,15 @@ ofApp::Tile* ofApp::findTile(float x, float y)
     return &*found;
 }
 
+ofColor ofApp::getFocusColor(ofColor start, ofColor end, float period)
+{
+    auto diff = Clock::now() - focus_start;
+    auto elapsed_seconds = duration_cast<FloatSeconds>(diff);
+    auto alpha = -cosf(M_PI * elapsed_seconds.count() / period) / 2 + .5;
+
+    return start * (1 - alpha) + end * alpha;
+}
+
 ofColor ofApp::getFocusColor(int gray, float alpha)
 {
     auto diff = Clock::now() - focus_start;
@@ -590,24 +657,82 @@ void ofApp::Tile::start_disabling(const TimeStamp& now)
     update_alpha(now);
 }
 
+inline static void of_rotate_degrees(float degrees)
+{
+#if OF_VERSION_MAJOR >= 0 || OF_VERSION_MINOR >= 10
+    ofRotateDeg(degrees);
+#else
+    ofRotate(degrees);
+#endif
+}
+
 void ofApp::Sticky::draw()
 {
-    static const float small = std::sin(M_PI/3);
+    static const float SQRT_3_PER_2 = std::sinf(M_PI/3);
 
     ofPushMatrix();
     ofTranslate(pos.x, pos.y);
     if (direction >= 0) {
-        ofRotate(90 + 60 * direction);
+        of_rotate_degrees(90 + 60 * direction);
         if (flip)
-            ofScale(1, -1);
-        ofScale(small, small);
+            ofScale(-1, -1);
+        ofScale(SQRT_3_PER_2, SQRT_3_PER_2);
     }
     const auto &image = images[(++step %= images.size()*10)/10];
     const float w = image.getWidth();
     const float h = image.getHeight();
     image.draw( -w / 2, h * .125 - h, w, h);
-
     ofPopMatrix();
+}
+
+std::complex<float> ofApp::Sticky::getDirectionVector() const
+{
+    return direction < 0 ? complex<float>(0) :
+        exp(complex<float>(0, M_PI / 2 + 2 * M_PI * direction / 6)) * (flip ? 1.f : -1.f);
+}
+
+static void drawVector(const ofVec2f &pos, complex<float> direction, float length, float arrowhead)
+{
+    static const float SQRT_3_PER_2 = std::sinf(M_PI / 3);
+    static const auto u150deg = complex<float>(0, 2 * M_PI / 3 + M_PI / 6);
+    static const auto rotateP150 = exp(u150deg);
+    static const auto rotateM150 = exp(-u150deg);
+
+    auto lvector = (length - arrowhead * SQRT_3_PER_2) * direction;
+    auto hvector = length *  direction;
+    const auto start = ofVec2f(pos.x, pos.y);
+    const auto end = start + toVec2f(lvector);
+
+    const auto tript0 = start + toVec2f(hvector);
+    const auto tript1 = tript0 + toVec2f(arrowhead  * (direction * rotateP150));
+    const auto tript2 = tript0 + toVec2f(arrowhead  * (direction * rotateM150));
+
+    ofDrawLine(start, end);
+    ofPushStyle();
+    ofFill();
+    ofBeginShape();
+    ofVertex(toVec3f(tript0));
+    ofVertex(toVec3f(tript1));
+    ofVertex(toVec3f(tript2));
+    ofEndShape();
+    ofPopStyle();
+}
+
+void ofApp::Sticky::drawArrow(float length, const float arrowhead)
+{
+    if (direction < 0)
+        return;
+
+    drawVector(pos, getDirectionVector(), length, arrowhead);
+}
+
+void ofApp::Sticky::drawNormal(float length, const float arrowhead)
+{
+    if (direction < 0)
+        return;
+
+    static constexpr complex<float> rot90 {0, 1};
+    drawVector(pos, getDirectionVector() * rot90, length, arrowhead);
 }
 
 void ofApp::Sticky::adjustDirection(const Tile& tile)

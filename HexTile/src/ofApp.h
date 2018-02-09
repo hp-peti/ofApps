@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <chrono>
+#include <complex>
 
 class ofApp: public ofBaseApp
 {
@@ -156,6 +157,7 @@ private:
     };
 
     ofColor getFocusColor(int gray, float alpha);
+    ofColor getFocusColor(ofColor alpha, ofColor beta, float period = 1);
     Tile* findTile(float x, float y);
 
     struct Sticky
@@ -169,6 +171,12 @@ private:
 
         void draw();
         void adjustDirection(const Tile &tile);
+        void drawArrow(float length, const float arrowhead);
+        void drawNormal(float length, const float arrowhead);
+
+        bool show_arrow = false;
+
+        std::complex<float> getDirectionVector() const;
     };
 
 
