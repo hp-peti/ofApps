@@ -236,6 +236,16 @@ void ofApp::drawSticky()
     }
 }
 
+// b == a * ( 1 - alpha ) + x * alpha
+// c == b * ( 1 - alpha ) + x * alpha
+//   == (a * ( 1 - alpha ) + x * alpha) * (1 - alpha) + x * alpha
+//   == a * (1 - (2*alpha - alpha^2) ) + x * (2*alpha - alpha^2)
+
+template <typename T>
+inline T doubleAlpha(const T &alpha) {
+    return 2 * alpha - alpha * alpha;
+}
+
 void ofApp::draw()
 {
     auto now = Clock::now();
@@ -260,8 +270,12 @@ void ofApp::draw()
     ofSetLineWidth(2.5);
     for (auto & tile : tiles)
         if (tile.isVisible()) {
-            ofSetColor(20,20,20,160 * tile.alpha);
+            const float lineAlpha = tile.alpha * 160 / 255;
+            ofSetColor(20,20,20,255 * lineAlpha);
             tile.draw();
+
+            // as if drawn 2 times
+            ofSetColor(20,20,20,255 * doubleAlpha(lineAlpha));
             tile.drawCubeIllusion();
         }
 
