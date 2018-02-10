@@ -2,9 +2,13 @@
 
 #include "ofMain.h"
 
-#include <vector>
 #include <chrono>
 #include <complex>
+
+#include <list>
+#include <map>
+
+#include <tuple>
 
 class ofApp: public ofBaseApp
 {
@@ -27,7 +31,10 @@ public:
     void windowResized(int w, int h) override;
     void dragEvent(ofDragInfo dragInfo) override;
     void gotMessage(ofMessage msg) override;
+
 private:
+    void createTiles();
+
     enum class TileColor
     {
         Black,
@@ -53,6 +60,9 @@ private:
     using TimeStamp = Clock::time_point;
     using Duration = Clock::duration;
     using FloatSeconds = std::chrono::duration<float>;
+
+    // for flood fill
+    using TileState = std::tuple<bool, TileColor, Orientation>;
 
     struct Tile
     {
@@ -101,7 +111,6 @@ private:
         {
             orientation = (Orientation)(1 + (int)roundf(ofRandom(1)));
         }
-
         void changeColorUp(const TimeStamp &now)
         {
             if (!enabled) {
@@ -145,11 +154,24 @@ private:
 
         float radiusSquared() const { return radius * radius; }
 
+        TileState getStateForFloodFill()
+        {
+            if (!isVisible())
+                return TileState(false, TileColor::White, Orientation::Blank);
+            return TileState(true, color, orientation);
+        }
+
+        void connectIfNeighbour(Tile *other);
+
+        const std::vector<Tile *>& getNeighbours() { return neighbours; }
+
     private:
         ofPolyline vertices;
         ofVec2f center;
         float radius;
         ofRectangle box;
+
+        std::vector<Tile *> neighbours;
 
         bool isDisabling()
         {
@@ -187,21 +209,30 @@ private:
         TimeStamp lastStep;
     };
 
-
+    void findCurrentTile() { findCurrentTile(ofGetMouseX(), ofGetMouseY()); }
     void findCurrentTile(float x, float y);
     void resetFocusStartTime();
     void drawBackground();
     void drawShadows();
     void updateSticky() { updateSticky(ofGetMouseX(), ofGetMouseY()); }
     void updateSticky(int x, int y);
+    void updateSelected();
     void drawSticky();
+    void drawFocus();
+    void drawTileFocus(Tile *tile);
 
-    std::vector<Tile> tiles;
+    void selectSimilarNeighbours(Tile *from);
+
+    std::list<Tile> tiles;
     TileImages tileImages;
     Sticky sticky;
 
     Tile* currentTile = nullptr;
     Tile* previousTile = nullptr;
+
+    bool enableFlood = false;
+    bool freezeFlood = false;
+    std::vector<Tile *> selectedTiles;
 
     TimeStamp focus_start = Clock::now();
 };

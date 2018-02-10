@@ -6,13 +6,29 @@
 #include <algorithm>
 
 #include <cmath>
-
+#include <set>
+#include <deque>
 #include <ciso646>
+
+#ifdef _DEBUG
+#include <iostream>
+#include <iomanip>
+using std::clog;
+using std::endl;
+#endif
 
 using std::array;
 using std::complex;
 using std::chrono::duration_cast;
 using namespace std::chrono_literals;
+
+static constexpr float TILE_EDGE_MM = 82.f; // mm
+static constexpr float TILE_SEPARATION_MM = 3.5; // mm
+
+static constexpr float PIX_PER_MM = .5f;
+
+static constexpr float TILE_RADIUS_PIX = (TILE_EDGE_MM + TILE_SEPARATION_MM / 2) * PIX_PER_MM;
+static constexpr float LINE_WIDTH_PIX = (TILE_SEPARATION_MM) * PIX_PER_MM;
 
 static constexpr auto ENABLE_DURATION = 250ms;
 static constexpr auto DISABLE_DURATION = 750ms;
@@ -42,6 +58,8 @@ inline ofVec3f toVec3f(const ofVec2f &vec)
 void ofApp::setup()
 {
     ofSetWindowTitle("HexTile");
+    ofSetBackgroundAuto(false);
+
     auto imagefile = [](auto file) {
         static const auto images = ofFilePath::join(ofFilePath::getCurrentExeDir(), "images");
         return ofFilePath::join(images,file);
@@ -58,21 +76,31 @@ void ofApp::setup()
         sticky.images[i].load(imagefile("sticky" + std::to_string(i) + ".png"));
     sticky.images[3] = sticky.images[1];
 
-    const float radius = 50.0;
+    createTiles();
+
+    currentTile = nullptr;
+}
+
+void ofApp::createTiles()
+{
+    const float radius = TILE_RADIUS_PIX;
     const float row_height = radius * std::sin(M_PI / 3);
     const float col_width = 3 * radius;
-    const float col_offset[2] = { radius, 2 * radius + radius * std::cos((float) M_PI / 3) };
+    const float col_offset[2] = { radius, 2 * radius + radius * std::cos((float)M_PI / 3) };
     const float row_offset = float(row_height / 2);
 
-    const auto NROWS = (int) ceilf(ofGetScreenHeight() / row_height);
-    const auto NCOLS = (int) ceilf(ofGetScreenWidth() / col_width);
+    const auto NROWS = (int)ceilf(ofGetScreenHeight() / row_height);
+    const auto NCOLS = (int)ceilf(ofGetScreenWidth() / col_width);
 
     for (int row = -1; row <= NROWS; ++row) {
         for (int col = -1; col <= NCOLS; col++)
             tiles.emplace_back(col_width * col + col_offset[row & 1], row_height * row + row_offset, radius);
     }
 
-    currentTile = nullptr;
+    for (auto tile = tiles.begin(); tile != tiles.end(); ++tile) {
+        for (auto other_tile = tiles.begin(); other_tile != tile; ++other_tile)
+            tile->connectIfNeighbour(&*other_tile);
+    }
 }
 
 //--------------------------------------------------------------
@@ -83,6 +111,8 @@ void ofApp::update()
         updateSticky();
         sticky.updateStep(Clock::now());
     }
+
+    updateSelected();
 }
 static auto make_unit_roots()
 {
@@ -115,6 +145,25 @@ ofApp::Tile::Tile(float x, float y, float radius) :
 bool ofApp::Tile::isPointInside(float x, float y) const
 {
     return box.inside(x, y) and vertices.inside(x, y);
+}
+
+void ofApp::Tile::connectIfNeighbour(Tile * other)
+{
+    if (other == nullptr || other == this)
+        return;
+
+    if (center.squareDistance(other->center) > (radius + other->radius) * (radius + other->radius))
+        return;
+
+    for (const auto *n : neighbours)
+        if (n == other)
+            return;
+
+#ifdef _DEBUG
+    clog << "connect " << this << " to " << other << endl;
+#endif
+    neighbours.push_back(other);
+    other->neighbours.push_back(this);
 }
 
 void ofApp::Tile::fill() const
@@ -189,25 +238,25 @@ void ofApp::drawBackground()
 {
     if (concrete.isAllocated())
     {
-        ofSetColor(200);
+        ofSetColor(240);
         ofRectangle winrect = ofGetWindowRect();
-        const auto xinc = concrete.getWidth();
-        const auto yinc = concrete.getHeight();
-        for (float x = 0; x < winrect.width; x += xinc)
-            for (float y = 0; y < winrect.width; y += yinc)
-                concrete.draw(x, y, xinc, yinc);
+        ofRectangle slab { 0, 0, concrete.getWidth(), concrete.getHeight()};
+        slab.scale(PIX_PER_MM, PIX_PER_MM);
+        for (slab.x = 0; slab.x < winrect.width; slab.x += slab.width)
+            for (slab.y = 0; slab.y < winrect.width; slab.y += slab.height)
+                concrete.draw(slab);
     }
     else
     {
-        ofClear(ofColor { 128, 128, 128 });
+        ofBackgroundGradient(ofColor { 120, 120, 120 }, ofColor { 160, 160, 160 });
     }
 }
 
 void ofApp::drawShadows()
 {
-    ofSetLineWidth(5);
+    ofSetLineWidth(LINE_WIDTH_PIX);
     ofPushMatrix();
-    ofTranslate(1.f, 1.f);
+    ofTranslate(LINE_WIDTH_PIX / 2, LINE_WIDTH_PIX / 2);
     for (auto& tile : tiles)
     {
         if (tile.isVisible())
@@ -225,14 +274,86 @@ void ofApp::drawSticky()
         ofSetLineWidth(2);
         ofSetColor(getFocusColorMix(ofColor(32, 32, 32, 196), ofColor(160, 160, 160, 240), ARROW_COLOR_PERIOD));
         if (sticky.visible) {
-            sticky.drawArrow(25 + 5 * getFocusAlpha(ARROW_SHORT_LENGTH_PERIOD), 10);
+            sticky.drawArrow(TILE_RADIUS_PIX/2 + TILE_RADIUS_PIX/10 * getFocusAlpha(ARROW_SHORT_LENGTH_PERIOD), 10);
         } else {
-            sticky.drawNormal(50 + 10 * getFocusAlpha(ARROW_LONG_LENGTH_PERIOD), 15);
+            sticky.drawNormal(TILE_RADIUS_PIX + TILE_RADIUS_PIX/5 * getFocusAlpha(ARROW_LONG_LENGTH_PERIOD), 15);
         }
     }
     if (sticky.visible) {
         ofSetColor(255);
         sticky.draw();
+    }
+}
+
+void ofApp::drawFocus()
+{
+    if (!enableFlood) {
+        drawTileFocus(currentTile);
+    } else {
+        for (auto *tile : selectedTiles) {
+            drawTileFocus(tile);
+        }
+    }
+}
+
+void ofApp::drawTileFocus(Tile * tile)
+{
+    if (tile == nullptr)
+        return;
+
+    if (tile->enabled or tile->in_transition) {
+        ofSetColor(getFocusColor(128, tile->alpha));
+        tile->fill();
+    }
+    if (not tile->enabled or tile->in_transition) {
+        ofSetColor(getFocusColor(255, 1 - tile->alpha));
+        ofSetLineWidth(1.5);
+        tile->draw();
+    }
+}
+
+void ofApp::selectSimilarNeighbours(Tile *from)
+{
+    if (from == nullptr)
+        return;
+
+    auto *found = &selectedTiles;
+    found->clear();
+
+    std::set<Tile *> visited;
+    std::deque<Tile *> queue;
+
+    const auto state = from->getStateForFloodFill();
+
+    auto is_same = [&state](Tile *tile) {
+        return tile->getStateForFloodFill() == state;
+    };
+
+    auto visit = [&visited](Tile *tile) {
+        return visited.insert(tile).second == true;
+    };
+
+    auto push = [&queue, found](Tile *tile) {
+        found->push_back(tile);
+        queue.push_back(tile);
+    };
+
+    auto pop = [&queue]() -> Tile * {
+        if (queue.empty())
+            return nullptr;
+        auto *p = queue.front();
+        queue.pop_front();
+        return p;
+    };
+
+    push(from);
+    visit(from);
+
+    while (auto *tile = pop()) {
+        for (auto *next : tile->getNeighbours()) {
+            if (visit(next) && is_same(next))
+                push(next);
+        }
     }
 }
 
@@ -267,30 +388,21 @@ void ofApp::draw()
         }
     }
 
-    ofSetLineWidth(2.5);
-    for (auto & tile : tiles)
+    ofSetLineWidth(LINE_WIDTH_PIX);
+    for (auto & tile : tiles) {
         if (tile.isVisible()) {
             const float lineAlpha = tile.alpha * 160 / 255;
-            ofSetColor(20,20,20,255 * lineAlpha);
+            ofSetColor(20, 20, 20, 255 * lineAlpha);
             tile.draw();
 
             // as if drawn 2 times
-            ofSetColor(20,20,20,255 * doubleAlpha(lineAlpha));
+            ofSetColor(20, 20, 20, 255 * doubleAlpha(lineAlpha));
             tile.drawCubeIllusion();
-        }
-
-    if (currentTile != nullptr) {
-        if (currentTile->enabled or currentTile->in_transition) {
-            ofSetColor(getFocusColor(128, currentTile->alpha));
-            currentTile->fill();
-        }
-        if (not currentTile->enabled or currentTile->in_transition) {
-            ofSetColor(getFocusColor(255, 1 - currentTile->alpha));
-            ofSetLineWidth(1.5);
-            currentTile->draw();
         }
     }
 
+    drawFocus();
+ 
     drawSticky();
 }
 
@@ -313,14 +425,12 @@ void ofApp::keyPressed(int key)
     auto now = Clock::now();
     
     switch (key) {
-    case KEY_CTRL_('I'):
     case 'i':
     case 'I':
         for (auto &tile : tiles)
             if (tile.isVisible())
                 tile.invertColor();
         break;
-    case KEY_CTRL_('W'):
     case 'W':
     case 'w':
         if (not shift()) {
@@ -336,10 +446,8 @@ void ofApp::keyPressed(int key)
             }
         }
         break;
-    case KEY_CTRL_('B'):
     case 'B':
     case 'b':
-        if (ofGetKeyPressed(key)) {
             if (not shift()) {
                 for (auto &tile : tiles)
                     if (tile.isVisible())
@@ -352,7 +460,6 @@ void ofApp::keyPressed(int key)
                     tile.start_enabling(now);
                 }
             }
-        }
         break;
     case 'c':
     case 'C':
@@ -449,6 +556,12 @@ void ofApp::keyPressed(int key)
     case KEY_CTRL_('A'):
         sticky.show_arrow = not sticky.show_arrow;
         break;
+    case OF_KEY_CONTROL:
+        if (not enableFlood) {
+            enableFlood = true;
+            freezeFlood = false;
+        }
+        break;
     case OF_KEY_RIGHT:
         if (sticky.direction >= 0)
             ++sticky.direction %= 6;
@@ -468,7 +581,11 @@ void ofApp::keyPressed(int key)
 //--------------------------------------------------------------
 void ofApp::keyReleased(int key)
 {
-
+    switch (key) {
+    case OF_KEY_CONTROL:
+        enableFlood = false;
+        break;
+    }
 }
 
 void ofApp::updateSticky(int x, int y)
@@ -478,6 +595,19 @@ void ofApp::updateSticky(int x, int y)
         if (currentTile != nullptr) {
             sticky.adjustDirection(*currentTile);
         }
+    }
+}
+
+void ofApp::updateSelected()
+{
+    if (not enableFlood) {
+        selectedTiles.clear();
+        if (currentTile != nullptr) {
+            selectedTiles.push_back(currentTile);
+        }
+    } else {
+        if (not freezeFlood)
+            selectSimilarNeighbours(currentTile);
     }
 }
 
@@ -499,46 +629,54 @@ void ofApp::mouseDragged(int x, int y, int button)
 void ofApp::mousePressed(int x, int y, int button)
 {
     findCurrentTile(x, y);
-
-    if (currentTile != nullptr) {
-        auto now = Clock::now();
+    updateSelected();
+    auto now = Clock::now();
         switch (button) {
         case OF_MOUSE_BUTTON_LEFT:
             if (not shift())
-                currentTile->changeColorUp(now);
+                for (auto *tile : selectedTiles)
+                    tile->changeColorUp(now);
             else
-                currentTile->changeColorDown(now);
+                for (auto *tile : selectedTiles)
+                    tile->changeColorDown(now);
+            freezeFlood = true;
             resetFocusStartTime();
             break;
         case OF_MOUSE_BUTTON_RIGHT:
-            if (currentTile->enabled) {
-                currentTile->start_disabling(now);
-                resetFocusStartTime();
+            for (auto *tile : selectedTiles) {
+                if (tile->enabled) {
+                    tile->start_disabling(now);
+                }
             }
+            resetFocusStartTime();
+            freezeFlood = true;
             break;
         case OF_MOUSE_BUTTON_MIDDLE:
-            currentTile->removeOrientation();
+            for (auto *tile : selectedTiles)
+                tile->removeOrientation();
+            freezeFlood = true;
             resetFocusStartTime();
             break;
         }
-    }
     updateSticky(x, y);
 }
 
 void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY)
 {
     findCurrentTile(x, y);
+    updateSelected();
+
     if (not shift()) {
+        for (auto * tile : selectedTiles) {
+            if (tile->isVisible()) {
+                if (scrollY > 0)
+                    tile->changeOrientationUp();
 
-        if (currentTile != nullptr and currentTile->isVisible()) {
-            if (scrollY > 0)
-                currentTile->changeOrientationUp();
-
-            if (scrollY < 0)
-                currentTile->changeOrientationDown();
+                if (scrollY < 0)
+                    tile->changeOrientationDown();
+            }
         }
     } else {
-
         if (scrollY > 0)
             for (auto &tile : tiles)
                 if (tile.isVisible())
@@ -549,6 +687,7 @@ void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY)
                 if (tile.isVisible())
                     tile.changeOrientationDown();
     }
+    freezeFlood = true;
     updateSticky(x, y);
 }
 
@@ -634,7 +773,8 @@ void ofApp::findCurrentTile(float x, float y)
     currentTile = findTile(x, y);
     if (currentTile != nullptr and currentTile != previousTile)
     {
-        resetFocusStartTime();
+        if (not enableFlood or not freezeFlood)
+            resetFocusStartTime();
     }
     previousTile = currentTile;
 
@@ -706,8 +846,8 @@ void ofApp::Sticky::draw()
         ofScale(SQRT_3_PER_2, SQRT_3_PER_2);
     }
     const auto &image = images[stepIndex];
-    const float w = image.getWidth();
-    const float h = image.getHeight();
+    const float w = image.getWidth() * PIX_PER_MM;
+    const float h = image.getHeight() * PIX_PER_MM;
     image.draw( -w / 2, h * .125 - h, w, h);
     ofPopMatrix();
 }
