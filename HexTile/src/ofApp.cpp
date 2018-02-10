@@ -427,65 +427,64 @@ void ofApp::keyPressed(int key)
     switch (key) {
     case 'i':
     case 'I':
-        for (auto &tile : tiles)
-            if (tile.isVisible())
-                tile.invertColor();
-        break;
-    case 'W':
-    case 'w':
-        if (not shift()) {
-            for (auto &tile : tiles)
-                if (tile.isVisible())
-                    tile.color = TileColor::White;
-        } else {
-            for (auto &tile : tiles) {
-                tile.color = TileColor::White;
-                if (!tile.isVisible())
-                    tile.orientation = Orientation::Blank;
-                tile.start_enabling(now);
+        for (auto *tile : selectedTiles) {
+            if (tile->isVisible()) {
+                tile->invertColor();
+                freezeSelection = true;
             }
         }
         break;
+    case 'W':
+    case 'w':
+        for (auto *tile : selectedTiles) {
+            tile->color = TileColor::White;
+            if (not tile->isVisible())
+                tile->orientation = Orientation::Blank;
+            tile->start_enabling(now);
+        }
+        freezeSelection = true;
+        break;
     case 'B':
     case 'b':
-            if (not shift()) {
-                for (auto &tile : tiles)
-                    if (tile.isVisible())
-                        tile.color = TileColor::Black;
-            } else {
-                for (auto &tile : tiles) {
-                    tile.color = TileColor::Black;
-                    if (!tile.isVisible())
-                        tile.orientation = Orientation::Blank;
-                    tile.start_enabling(now);
-                }
-            }
+        for (auto *tile : selectedTiles) {
+            tile->color = TileColor::Black;
+            if (not tile->isVisible())
+                tile->orientation = Orientation::Blank;
+            tile->start_enabling(now);
+        }
+        freezeSelection = true;
+        break;
+    case 'G':
+    case 'g':
+        for (auto *tile : selectedTiles) {
+            tile->color = TileColor::Gray;
+            if (not tile->isVisible())
+                tile->orientation = Orientation::Blank;
+            tile->start_enabling(now);
+        }
+        freezeSelection = true;
         break;
     case 'c':
     case 'C':
-        if (shift()) {
+        for (auto *tile : selectedTiles)
+            if (tile->isVisible())
+                tile->orientation = Orientation::Blank;
+        freezeSelection = true;
+        break;
+    case 'D':
+    case 'd':
+    case OF_KEY_DEL:
+        if (not shift()) {
+            for (auto *tile : selectedTiles) {
+                tile->start_disabling(now);
+            }
+        } else {
             for (auto &tile : tiles) {
                 tile.start_disabling(now);
             }
         }
+        freezeSelection = true;
         break;
-    case KEY_CTRL_('G'):
-    case 'G':
-    case 'g':
-        if (not shift()) {
-            for (auto &tile : tiles)
-                if (tile.isVisible())
-                    tile.color = TileColor::Gray;
-        } else {
-            for (auto &tile : tiles) {
-                tile.color = TileColor::Gray;
-                if (!tile.isVisible())
-                    tile.orientation = Orientation::Blank;
-                tile.start_enabling(now);
-            }
-        }
-        break;
-    case KEY_CTRL_('R'):
     case 'r':
     case 'R':
         if (not ctrl_or_alt()) {
@@ -501,14 +500,14 @@ void ofApp::keyPressed(int key)
             break;
         } else {
             if (not shift()) {
-                for (auto &tile : tiles)
-                    if (tile.isVisible())
-                        tile.changeToRandomColor(now);
+                for (auto *tile : selectedTiles)
+                    tile->changeToRandomColor(now);
             } else {
-                for (auto &tile : tiles) {
-                   tile.changeToRandomColor(now);
+                for (auto &tile : selectedTiles) {
+                   tile->changeToRandomOrientation();
                 }
             }
+            freezeSelection = true;
             break;
         }
     case KEY_CTRL_('O'):
@@ -527,15 +526,13 @@ void ofApp::keyPressed(int key)
             break;
         } else {
             if (not shift()) {
-                for (auto &tile : tiles)
-                    if (tile.isVisible() and tile.orientation != Orientation::Blank)
-                        tile.changeToRandomNonBlankOrientation();
+                for (auto *tile : selectedTiles)
+                    tile->changeToRandomOrientation();
             } else {
-                for (auto &tile : tiles) {
-                    if (tile.isVisible())
-                        tile.changeToRandomOrientation();
-                }
+                for (auto *tile : selectedTiles)
+                    tile->changeToRandomNonBlankOrientation();
             }
+            freezeSelection = true;
             break;
         }
     case KEY_CTRL_('F'):
@@ -557,10 +554,14 @@ void ofApp::keyPressed(int key)
         sticky.show_arrow = not sticky.show_arrow;
         break;
     case OF_KEY_CONTROL:
+    case OF_KEY_ALT:
+    case OF_KEY_COMMAND:
         if (not enableFlood) {
             enableFlood = true;
-            freezeFlood = false;
+            freezeSelection = false;
         }
+        break;
+    case OF_KEY_ESC:
         break;
     case OF_KEY_RIGHT:
         if (sticky.direction >= 0)
@@ -570,11 +571,16 @@ void ofApp::keyPressed(int key)
         if (sticky.direction >= 0)
         (sticky.direction+= 5) %= 6;
         break;
+    case 'Q':
+    case 'q':
+        if (ofGetKeyPressed(OF_KEY_ALT))
+            ofExit(0);
+        break;
     }
-#if defined (_WIN32) //&& defined(_DEBUG)
-    char str[256];
-    sprintf(str, "key pressed: 0x%.2x (%c)", key, key);
-    OutputDebugStringA(str);
+
+
+#if defined(_DEBUG)
+    clog << std::hex << "0x" <<  key << "('" << (char)key <"')";
 #endif
 }
 
@@ -583,7 +589,11 @@ void ofApp::keyReleased(int key)
 {
     switch (key) {
     case OF_KEY_CONTROL:
-        enableFlood = false;
+    case OF_KEY_ALT:
+    case OF_KEY_COMMAND:
+        if (!ctrl_or_alt()) {
+            enableFlood = false;
+        }
         break;
     }
 }
@@ -606,7 +616,7 @@ void ofApp::updateSelected()
             selectedTiles.push_back(currentTile);
         }
     } else {
-        if (not freezeFlood)
+        if (not freezeSelection)
             selectSimilarNeighbours(currentTile);
     }
 }
@@ -639,7 +649,7 @@ void ofApp::mousePressed(int x, int y, int button)
             else
                 for (auto *tile : selectedTiles)
                     tile->changeColorDown(now);
-            freezeFlood = true;
+            freezeSelection = true;
             resetFocusStartTime();
             break;
         case OF_MOUSE_BUTTON_RIGHT:
@@ -649,12 +659,12 @@ void ofApp::mousePressed(int x, int y, int button)
                 }
             }
             resetFocusStartTime();
-            freezeFlood = true;
+            freezeSelection = true;
             break;
         case OF_MOUSE_BUTTON_MIDDLE:
             for (auto *tile : selectedTiles)
                 tile->removeOrientation();
-            freezeFlood = true;
+            freezeSelection = true;
             resetFocusStartTime();
             break;
         }
@@ -666,28 +676,16 @@ void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY)
     findCurrentTile(x, y);
     updateSelected();
 
-    if (not shift()) {
-        for (auto * tile : selectedTiles) {
-            if (tile->isVisible()) {
-                if (scrollY > 0)
-                    tile->changeOrientationUp();
+    for (auto * tile : selectedTiles) {
+        if (tile->isVisible()) {
+            if (scrollY > 0)
+                tile->changeOrientationUp();
 
-                if (scrollY < 0)
-                    tile->changeOrientationDown();
-            }
+            if (scrollY < 0)
+                tile->changeOrientationDown();
         }
-    } else {
-        if (scrollY > 0)
-            for (auto &tile : tiles)
-                if (tile.isVisible())
-                    tile.changeOrientationUp();
-
-        if (scrollY < 0)
-            for (auto &tile : tiles)
-                if (tile.isVisible())
-                    tile.changeOrientationDown();
     }
-    freezeFlood = true;
+    freezeSelection = true;
     updateSticky(x, y);
 }
 
@@ -773,7 +771,7 @@ void ofApp::findCurrentTile(float x, float y)
     currentTile = findTile(x, y);
     if (currentTile != nullptr and currentTile != previousTile)
     {
-        if (not enableFlood or not freezeFlood)
+        if (not enableFlood or not freezeSelection)
             resetFocusStartTime();
     }
     previousTile = currentTile;

@@ -231,7 +231,7 @@ private:
     Tile* previousTile = nullptr;
 
     bool enableFlood = false;
-    bool freezeFlood = false;
+    bool freezeSelection = false;
     std::vector<Tile *> selectedTiles;
 
     TimeStamp focus_start = Clock::now();
