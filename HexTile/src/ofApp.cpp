@@ -4,7 +4,9 @@
 
 #include <array>
 #include <algorithm>
+
 #include <sstream>
+#include <iomanip>
 
 #include <set>
 #include <deque>
@@ -14,7 +16,6 @@
 
 #ifdef _DEBUG
 #include <iostream>
-#include <iomanip>
 using std::clog;
 using std::endl;
 #endif
@@ -40,17 +41,69 @@ static constexpr auto ARROW_COLOR_PERIOD = 2s;
 static constexpr auto ARROW_SHORT_LENGTH_PERIOD = 0.75s;
 static constexpr auto ARROW_LONG_LENGTH_PERIOD = 1.5s;
 
-static const float ZOOM_DEFAULT = 1;
-static const float zoom_levels[] = { 
-    1 / 5.f, 1 / 4.f, 1 / 3.f,1 / 2.f, 
-    ZOOM_DEFAULT,
-    2, 3, 4, 5
+namespace ZoomLevels {
+
+struct rational
+{
+    int num;
+    unsigned den;
+
+    bool operator == (const rational &other) const
+    {
+        return num * (int)other.den == other.num * (int)den;
+    }
+
+    bool operator < (const rational &other) const
+    {
+        return num * (int)other.den < other.num * (int)den;
+    }
+
+    bool operator != (const rational &other) const
+    {
+        return !(*this == other);
+    }
+
+    bool operator > (const rational &other) const
+    {
+        return other < *this;
+    }
+
+    operator float() const { return (float)num / (float)den; }
+
 };
+
+const std::vector<rational> generate(unsigned N)
+{
+    std::vector<rational> v;
+
+    for (int num = 1; num <= (int)N; ++num) {
+        for (unsigned den = 1; den <= N; ++den) {
+            rational r { num, den };
+            auto p = std::lower_bound(v.begin(), v.end(), r);
+            if (p == v.end() || *p != r) {
+                v.insert(p, r);
+            }
+        }
+    }
+#ifdef _DEBUG
+    clog << "generated ratios: ";
+    for (auto &r : v) {
+        clog << " " << r.num << "/" << r.den;
+    }
+    clog << endl;
+#endif
+    return v;
+}
+
+} // namespace ZoomLevels
+
 
 static constexpr float X_STEP = TILE_RADIUS_PIX;
 static constexpr float Y_STEP = TILE_RADIUS_PIX;
 
-const int ofApp::default_zoom_level = std::find(begin(zoom_levels), end(zoom_levels), ZOOM_DEFAULT) - begin(zoom_levels);
+const auto zoom_levels = ZoomLevels::generate(6);
+
+const int ofApp::default_zoom_level = (zoom_levels.size() + 1) / 2;
 
 static ofVec2f getViewportSize(bool fullscreen)
 {
@@ -284,7 +337,7 @@ void ofApp::Tile::connectIfNeighbour(Tile * other)
             return;
 
 #ifdef _DEBUG
-    clog << "connect " << this << " to " << other << endl;
+    // clog << "connect " << this << " to " << other << endl;
 #endif
     neighbours.push_back(other);
     other->neighbours.push_back(this);
@@ -446,9 +499,11 @@ void ofApp::drawInfo()
 
     std::ostringstream info;
     info
-        << "Scale    : " << "1 px = " << view.zoom / PIX_PER_MM << " mm\n"
-        << "View     : " << viewrect_mm.width << "x" << viewrect_mm.height << "+" << viewrect_mm.x << "x" << viewrect_mm.y << " mm\n"
-        << "Tiles    : " << tiles.size()
+        << "Scale      : " << "1 px = " << view.zoom / PIX_PER_MM << " mm\n"
+        << "View       : " << (int)viewrect_mm.width << "x" << (int)viewrect_mm.height
+                           << " @ " << (int)viewrect_mm.x << "," << (int)viewrect_mm.y << " mm\n"
+        << "Tiles      : " << tiles.size() << "\n"
+        << "Frame rate : " << std::setprecision(2) << ofGetFrameRate() << " fps";
         ;
     const ofVec2f pos(2, ofGetViewportHeight() - 2);
     drawBottomText(info.str(), pos);
@@ -757,7 +812,7 @@ void ofApp::keyPressed(int key)
         view.offset.y += Y_STEP;
         break;
     case '+':
-        if (zoomLevel + 1 < end(zoom_levels) - begin(zoom_levels))
+        if (zoomLevel + 1 < zoom_levels.size())
             view.setZoomWithOffset(zoom_levels[++zoomLevel], ofVec2f(ofGetMouseX(), ofGetMouseY()));
         break;
     case '-':
@@ -765,7 +820,7 @@ void ofApp::keyPressed(int key)
             view.setZoomWithOffset(zoom_levels[--zoomLevel], ofVec2f(ofGetMouseX(), ofGetMouseY()));
         break;
     case '*':
-        view.zoom = 1;
+        view.setZoomWithOffset(zoom_levels[zoomLevel = default_zoom_level], ofVec2f(ofGetMouseX(), ofGetMouseY()));
         break;
     case ']':
         if (sticky.direction >= 0)
@@ -783,7 +838,7 @@ void ofApp::keyPressed(int key)
     }
 
 #if defined(_DEBUG)
-    clog << std::hex << "0x" <<  key << "('" << (char)key << "')";
+    clog << std::hex << "key pressed: 0x" <<  key << "('" << (char)key << "')" << endl;
 #endif
 }
 
@@ -803,7 +858,7 @@ void ofApp::keyReleased(int key)
 
 void ofApp::updateSticky(int x, int y)
 {
-    sticky.pos = ofVec2f { (float) (x), (float) (y) };
+    sticky.pos = ofVec2f { (float) (x), (float) (y) } / view.zoom + view.offset;
     if (sticky.visible or sticky.show_arrow) {
         if (currentTile != nullptr) {
             sticky.adjustDirection(*currentTile);
