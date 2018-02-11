@@ -1047,6 +1047,11 @@ void ofApp::findCurrentTile(float x, float y)
     currentTile = findTile(x, y);
     if (currentTile != nullptr and currentTile != previousTile)
     {
+        if (enableFlood and freezeSelection) {
+            if (std::find(selectedTiles.begin(), selectedTiles.end(), currentTile) == selectedTiles.end()) {
+                freezeSelection = false;
+            }
+        }
         if (not enableFlood or not freezeSelection)
             resetFocusStartTime();
     }
