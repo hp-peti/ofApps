@@ -89,9 +89,12 @@ void ofApp::createTiles()
         }
     }
 
+    viewableTiles.reserve(tiles.size());
+
     for (auto tile = tiles.begin(); tile != tiles.end(); ++tile) {
         for (auto other_tile = tiles.begin(); other_tile != tile; ++other_tile)
             tile->connectIfNeighbour(&*other_tile);
+        viewableTiles.push_back(&*tile);
     }
 
 }
@@ -146,7 +149,7 @@ void ofApp::removeExtraTiles(const ViewCoords &view)
     }
 
     if (not removedTiles.empty()) {
-        std:sort(removedTiles.begin(), removedTiles.end());
+        std::sort(removedTiles.begin(), removedTiles.end());
         if (currentTile != nullptr) {
             if (std::binary_search(removedTiles.begin(), removedTiles.end(), currentTile)) {
                 if (previousTile == currentTile)
