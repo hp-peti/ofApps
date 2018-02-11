@@ -261,8 +261,8 @@ private:
         }
     };
 
-    static const int default_zoom_level;
-    int zoomLevel = default_zoom_level;
+    static const int default_zoom_level();
+    int zoomLevel = default_zoom_level();
 
     ViewCoords view, prevView;
 

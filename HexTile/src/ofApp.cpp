@@ -25,6 +25,8 @@ using std::complex;
 using std::chrono::duration_cast;
 using namespace std::chrono_literals;
 
+#define SQRT_3    1.7320508075688772935274463415059
+
 static constexpr float TILE_EDGE_MM = 82.f; // mm
 static constexpr float TILE_SEPARATION_MM = 3.5; // mm
 
@@ -97,13 +99,15 @@ const std::vector<rational> generate(unsigned N)
 
 } // namespace ZoomLevels
 
-
 static constexpr float X_STEP = TILE_RADIUS_PIX;
 static constexpr float Y_STEP = TILE_RADIUS_PIX;
 
 const auto zoom_levels = ZoomLevels::generate(6);
 
-const int ofApp::default_zoom_level = (zoom_levels.size() + 1) / 2;
+const int ofApp::default_zoom_level()
+{
+    return std::find(zoom_levels.begin(), zoom_levels.end(), ZoomLevels::rational { 1,1 }) - zoom_levels.begin();
+}
 
 static ofVec2f getViewportSize(bool fullscreen)
 {
@@ -155,11 +159,15 @@ void ofApp::setup()
 }
 
 namespace TileParams {
-static const float radius = TILE_RADIUS_PIX;
-static const float row_height = radius * std::sin(M_PI / 3);
-static const float col_width = 3 * radius;
-static const float col_offset[2] = { radius, 2 * radius + radius * std::cos((float)M_PI / 3) };
-static const float row_offset = float(row_height / 2);
+
+static constexpr float sin_60_deg = SQRT_3 / 2;
+static constexpr float cos_60_deg = 0.5;
+
+static constexpr float radius = TILE_RADIUS_PIX;
+static constexpr float row_height = radius *  sin_60_deg;
+static constexpr float col_width = 3 * radius;
+static constexpr float col_offset[2] = { radius, 2 * radius + radius * cos_60_deg};
+static constexpr float row_offset = float(row_height / 2);
 
 inline ofVec2f center(int row, int col)
 {
@@ -177,6 +185,7 @@ float rowf(float y)
 {
     return ((y - row_offset ) / row_height);
 }
+
 float colf(float x)
 {
     return ((x - col_offset[0]) / col_width);
@@ -820,7 +829,7 @@ void ofApp::keyPressed(int key)
             view.setZoomWithOffset(zoom_levels[--zoomLevel], ofVec2f(ofGetMouseX(), ofGetMouseY()));
         break;
     case '*':
-        view.setZoomWithOffset(zoom_levels[zoomLevel = default_zoom_level], ofVec2f(ofGetMouseX(), ofGetMouseY()));
+        view.setZoomWithOffset(zoom_levels[zoomLevel = default_zoom_level()], ofVec2f(ofGetMouseX(), ofGetMouseY()));
         break;
     case ']':
         if (sticky.direction >= 0)
@@ -1100,7 +1109,7 @@ inline static void of_rotate_degrees(float degrees)
 
 void ofApp::Sticky::draw()
 {
-    static const float SQRT_3_PER_2 = std::sin(M_PI/3);
+    static constexpr float sin_60_deg = SQRT_3 / 2;
 
     ofPushMatrix();
     ofTranslate(pos.x, pos.y);
@@ -1108,7 +1117,7 @@ void ofApp::Sticky::draw()
         of_rotate_degrees(90 + 60 * direction);
         if (flip)
             ofScale(-1, -1);
-        ofScale(SQRT_3_PER_2, SQRT_3_PER_2);
+        ofScale(sin_60_deg, sin_60_deg);
     }
     const auto &image = images[stepIndex];
     const float w = image.getWidth() * PIX_PER_MM;
@@ -1125,12 +1134,13 @@ std::complex<float> ofApp::Sticky::getDirectionVector() const
 
 static void drawVector(const ofVec2f &pos, complex<float> direction, float length, float arrowhead)
 {
-    static const float SQRT_3_PER_2 = std::sin(M_PI / 3);
-    static const auto u150deg = complex<float>(0, 2 * M_PI / 3 + M_PI / 6);
+    static constexpr float sin_60_deg = SQRT_3 / 2;
+    static constexpr auto u150deg = complex<float>(0, 2 * M_PI / 3 + M_PI / 6);
+
     static const auto rotateP150 = exp(u150deg);
     static const auto rotateM150 = exp(-u150deg);
 
-    auto lvector = (length - arrowhead * SQRT_3_PER_2) * direction;
+    auto lvector = (length - arrowhead * sin_60_deg) * direction;
     auto hvector = length *  direction;
     const auto start = ofVec2f(pos.x, pos.y);
     const auto end = start + toVec2f(lvector);
