@@ -1,4 +1,6 @@
 #include "ofApp.h"
+#include "TileParams.h"
+#include "ZoomLevels.h"
 
 #include <ofFileUtils.h>
 
@@ -14,90 +16,11 @@
 #include <cmath>
 #include <ciso646>
 
-#ifdef _DEBUG
-#include <iostream>
-using std::clog;
-using std::endl;
-#endif
-
-using std::array;
 using std::complex;
-using std::chrono::duration_cast;
-using namespace std::chrono_literals;
 
-#define SQRT_3    1.7320508075688772935274463415059
-
-static constexpr float TILE_EDGE_MM = 82.f; // mm
-static constexpr float TILE_SEPARATION_MM = 3.5; // mm
-
-static constexpr float PIX_PER_MM = .5f;
-static constexpr float BG_SCALE = .5f;
-
-static constexpr float TILE_RADIUS_PIX = (TILE_EDGE_MM + TILE_SEPARATION_MM / 2) * PIX_PER_MM;
-static constexpr float LINE_WIDTH_PIX = (TILE_SEPARATION_MM) * PIX_PER_MM;
-
-static constexpr auto ENABLE_DURATION = 250ms;
-static constexpr auto DISABLE_DURATION = 750ms;
-static constexpr auto STEP_DURATION = 200ms;
 static constexpr auto ARROW_COLOR_PERIOD = 2s;
 static constexpr auto ARROW_SHORT_LENGTH_PERIOD = 0.75s;
 static constexpr auto ARROW_LONG_LENGTH_PERIOD = 1.5s;
-
-namespace ZoomLevels {
-
-struct rational
-{
-    int num;
-    unsigned den;
-
-    bool operator == (const rational &other) const
-    {
-        return num * (int)other.den == other.num * (int)den;
-    }
-
-    bool operator < (const rational &other) const
-    {
-        return num * (int)other.den < other.num * (int)den;
-    }
-
-    bool operator != (const rational &other) const
-    {
-        return !(*this == other);
-    }
-
-    bool operator > (const rational &other) const
-    {
-        return other < *this;
-    }
-
-    operator float() const { return (float)num / (float)den; }
-
-};
-
-const std::vector<rational> generate(unsigned N)
-{
-    std::vector<rational> v;
-
-    for (int num = 1; num <= (int)N; ++num) {
-        for (unsigned den = 1; den <= N; ++den) {
-            rational r { num, den };
-            auto p = std::lower_bound(v.begin(), v.end(), r);
-            if (p == v.end() || *p != r) {
-                v.insert(p, r);
-            }
-        }
-    }
-#ifdef _DEBUG
-    clog << "generated ratios: ";
-    for (auto &r : v) {
-        clog << " " << r.num << "/" << r.den;
-    }
-    clog << endl;
-#endif
-    return v;
-}
-
-} // namespace ZoomLevels
 
 static constexpr float X_STEP = TILE_RADIUS_PIX;
 static constexpr float Y_STEP = TILE_RADIUS_PIX;
@@ -114,22 +37,6 @@ static ofVec2f getViewportSize(bool fullscreen)
     return ofVec2f(ofGetWindowWidth(), ofGetWindowHeight());
 }
 
-template <typename T>
-inline ofVec2f toVec2f(const complex<T> &vec)
-{
-    return ofVec2f(vec.real(), vec.imag());
-}
-
-template <typename T>
-inline ofVec3f toVec3f(const complex<T> &vec)
-{
-    return ofVec3f(vec.real(), vec.imag());
-}
-
-inline ofVec3f toVec3f(const ofVec2f &vec)
-{
-    return ofVec3f(vec.x, vec.y);
-}
 
 //--------------------------------------------------------------
 void ofApp::setup()
@@ -158,63 +65,6 @@ void ofApp::setup()
     currentTile = nullptr;
 }
 
-namespace TileParams {
-
-static constexpr float sin_60_deg = SQRT_3 / 2;
-static constexpr float cos_60_deg = 0.5;
-
-static constexpr float radius = TILE_RADIUS_PIX;
-static constexpr float row_height = radius *  sin_60_deg;
-static constexpr float col_width = 3 * radius;
-static constexpr float col_offset[2] = { radius, 2 * radius + radius * cos_60_deg};
-static constexpr float row_offset = float(row_height / 2);
-
-inline ofVec2f center(int row, int col)
-{
-    return ofVec2f(col_width * col + col_offset[row & 1],
-                   row_height * row + row_offset);
-}
-
-struct IntRange
-{
-    int begin;
-    int end;
-};
-
-float rowf(float y)
-{
-    return ((y - row_offset ) / row_height);
-}
-
-float colf(float x)
-{
-    return ((x - col_offset[0]) / col_width);
-}
-
-IntRange row_range(float begin_y, float end_y)
-{
-    return IntRange { (int)std::floor(rowf(begin_y) - .5), (int)std::ceil(rowf(end_y) + .5) };
-}
-IntRange col_range(float begin_x, float end_x)
-{
-    return IntRange { (int) std::floor(colf(begin_x) - .5), (int) std::ceil(colf(end_x) + .5) };
-}
-
-struct TileRange
-{
-    IntRange rows;
-    IntRange cols;
-};
-
-TileRange tile_range(const ofVec2f &size, float zoom = 1, const ofVec2f &offset = ofVec2f{0,0})
-{
-    return TileRange {
-        row_range(offset.y, size.y / zoom + offset.y),
-        col_range(offset.x, size.x / zoom + offset.x)
-    };
-}
-
-} // namespace TCP
 
 void ofApp::createTiles()
 {
@@ -270,7 +120,6 @@ void ofApp::removeExtraTiles()
 {
     auto windowRect = view.getViewRect();
 
-
     auto tile = tiles.begin();
     while (tile != tiles.end()) {
         if (not tile->isVisible()) {
@@ -282,9 +131,6 @@ void ofApp::removeExtraTiles()
         }
         ++tile;
     }
-
-
-
 }
 
 //--------------------------------------------------------------
@@ -299,134 +145,6 @@ void ofApp::update()
     }
 
     updateSelected();
-}
-static auto make_unit_roots()
-{
-    array<complex<float>, 6> roots { };
-
-    // e^(i*x) = cos(x) + i * sin(x)
-    for (size_t i = 0; i < roots.size(); ++i)
-        roots[i] = exp(complex<float>(0, i * M_PI / 3));
-
-    return roots;
-}
-
-ofApp::Tile::Tile(float x, float y, float radius) :
-    center(x, y),
-    radius(radius)
-{
-    static const auto roots = make_unit_roots();
-    for (int i = 0; i < 6; ++i) {
-        const float vx = x + radius * roots[i].real();
-        const float vy = y + radius * roots[i].imag();
-        vertices.addVertex(vx, vy, 0);
-    }
-    vertices.close();
-    box.x = vertices[3].x;
-    box.width = vertices[0].x - vertices[3].x;
-    box.y = vertices[5].y;
-    box.height = vertices[1].y - vertices[5].y;
-}
-
-bool ofApp::Tile::isPointInside(float x, float y) const
-{
-    return box.inside(x, y) and vertices.inside(x, y);
-}
-
-void ofApp::Tile::connectIfNeighbour(Tile * other)
-{
-    if (other == nullptr || other == this)
-        return;
-
-    if (center.squareDistance(other->center) > (radius + other->radius) * (radius + other->radius))
-        return;
-
-    for (const auto *n : neighbours)
-        if (n == other)
-            return;
-
-#ifdef _DEBUG
-    // clog << "connect " << this << " to " << other << endl;
-#endif
-    neighbours.push_back(other);
-    other->neighbours.push_back(this);
-}
-
-void ofApp::Tile::disconnect()
-{
-    for (auto *n : neighbours) {
-        auto &nn = n->neighbours;
-        nn.erase(std::find(nn.begin(), nn.end(), this));
-    }
-    neighbours.clear();
-}
-
-void ofApp::Tile::fill() const
-{
-    ofFill();
-    ofBeginShape();
-    for (auto& pt : vertices) {
-        ofVertex(pt.x, pt.y);
-    }
-    ofEndShape();
-    ofNoFill();
-}
-
-void ofApp::Tile::fill(TileImages &images) const
-{
-    ofImage *img = nullptr;
-    switch (color) {
-    case TileColor::Black:
-        img = &images.black;
-        break;
-    case TileColor::Gray:
-        img = &images.grey;
-        break;
-    case TileColor::White:
-        img = &images.white;
-        break;
-    }
-    if (img != nullptr and img->isAllocated()) {
-        ofSetColor(255, 255, 255, 255 * alpha);
-        img->draw(box);
-    } else {
-        switch (color) {
-        case TileColor::White:
-            ofSetColor(255, 255, 255, 255 * alpha);
-            break;
-        case TileColor::Black:
-            ofSetColor(2, 2, 2, 255 * alpha);
-            break;
-        case TileColor::Gray:
-            ofSetColor(96, 96, 96, 255 * alpha);
-            break;
-        }
-        fill();
-    }
-}
-
-void ofApp::Tile::draw() const
-{
-    vertices.draw();
-}
-
-void ofApp::Tile::drawCubeIllusion()
-{
-    const ofPoint c(center.x, center.y);
-
-    switch (orientation)
-    {
-    case Orientation::Blank:
-        break;
-    case Orientation::Odd:
-        for (auto i: {1,3,5})
-            ofDrawLine(c, vertices[i]);
-        break;
-    case Orientation::Even:
-        for (auto i: {0,2,4})
-            ofDrawLine(c, vertices[i]);
-        break;
-    }
 }
 
 void ofApp::drawBackground()
@@ -996,7 +714,7 @@ void ofApp::dragEvent(ofDragInfo dragInfo)
 
 }
 
-ofApp::Tile* ofApp::findTile(float x, float y)
+Tile* ofApp::findTile(float x, float y)
 {
     x /= view.zoom;
     y /= view.zoom;
@@ -1059,177 +777,7 @@ void ofApp::findCurrentTile(float x, float y)
 
 }
 
-void ofApp::Tile::update_alpha(const TimeStamp& now)
-{
-    if (not in_transition)
-        return;
 
-    const float final_alpha = enabled ? 1 : 0;
 
-    if ((now - alpha_stop).count() > 0) {
-        in_transition = false;
-        alpha = final_alpha;
-        return;
-    }
 
-    auto from_start = duration_cast<FloatSeconds>(now - alpha_start);
-    auto total = duration_cast<FloatSeconds>(alpha_stop - alpha_start);
 
-    float progress = from_start.count() / total.count();
-    alpha = initial_alpha * (1 - progress) + final_alpha * progress;
-}
-
-void ofApp::Tile::start_enabling(const TimeStamp& now)
-{
-    if (enabled)
-        return;
-    enabled = true;
-    in_transition = true;
-    initial_alpha = alpha;
-    alpha_start = now;
-    alpha_stop = now + ENABLE_DURATION;
-    update_alpha(now);
-}
-
-void ofApp::Tile::start_disabling(const TimeStamp& now)
-{
-    if (not enabled)
-        return;
-    enabled = false;
-    in_transition = true;
-    initial_alpha = alpha;
-    alpha_start = now;
-    alpha_stop = now + DISABLE_DURATION;
-    update_alpha(now);
-}
-
-inline static void of_rotate_degrees(float degrees)
-{
-#if OF_VERSION_MAJOR > 0 || OF_VERSION_MAJOR == 0 && OF_VERSION_MINOR >= 10
-    ofRotateDeg(degrees);
-#else
-    ofRotate(degrees);
-#endif
-}
-
-void ofApp::Sticky::draw()
-{
-    static constexpr float sin_60_deg = SQRT_3 / 2;
-
-    ofPushMatrix();
-    ofTranslate(pos.x, pos.y);
-    if (direction >= 0) {
-        of_rotate_degrees(90 + 60 * direction);
-        if (flip)
-            ofScale(-1, -1);
-        ofScale(sin_60_deg, sin_60_deg);
-    }
-    const auto &image = images[stepIndex];
-    const float w = image.getWidth() * PIX_PER_MM;
-    const float h = image.getHeight() * PIX_PER_MM;
-    image.draw( -w / 2, h * .125 - h, w, h);
-    ofPopMatrix();
-}
-
-std::complex<float> ofApp::Sticky::getDirectionVector() const
-{
-    return direction < 0 ? complex<float>(0) :
-        exp(complex<float>(0, M_PI / 2 + 2 * M_PI * direction / 6)) * (flip ? 1.f : -1.f);
-}
-
-static void drawVector(const ofVec2f &pos, complex<float> direction, float length, float arrowhead)
-{
-    static constexpr float sin_60_deg = SQRT_3 / 2;
-    static constexpr auto u150deg = complex<float>(0, 2 * M_PI / 3 + M_PI / 6);
-
-    static const auto rotateP150 = exp(u150deg);
-    static const auto rotateM150 = exp(-u150deg);
-
-    auto lvector = (length - arrowhead * sin_60_deg) * direction;
-    auto hvector = length *  direction;
-    const auto start = ofVec2f(pos.x, pos.y);
-    const auto end = start + toVec2f(lvector);
-
-    const auto tript0 = start + toVec2f(hvector);
-    const auto tript1 = tript0 + toVec2f(arrowhead  * (direction * rotateP150));
-    const auto tript2 = tript0 + toVec2f(arrowhead  * (direction * rotateM150));
-
-    ofDrawLine(start, end);
-    ofPushStyle();
-    ofFill();
-    ofBeginShape();
-    ofVec3f triangle[] = {toVec3f(tript0), toVec3f(tript1) , toVec3f(tript2)};
-    for (auto &vertex : triangle)
-        ofVertex(vertex);
-
-    ofEndShape();
-    ofPopStyle();
-}
-
-void ofApp::Sticky::drawArrow(float length, const float arrowhead)
-{
-    if (direction < 0)
-        return;
-
-    drawVector(pos, getDirectionVector(), length, arrowhead);
-}
-
-void ofApp::Sticky::drawNormal(float length, const float arrowhead)
-{
-    if (direction < 0)
-        return;
-
-    static constexpr complex<float> rot90 {0, 1};
-    drawVector(pos, getDirectionVector() * rot90, length, arrowhead);
-}
-
-void ofApp::Sticky::adjustDirection(const Tile& tile)
-{
-    auto adjust_by_closest_vertex_index = [this, &tile](std::initializer_list<int> indices) {
-        auto dist2min = tile.radiusSquared() * 4;
-        int imin = -1;
-        for (auto i : indices) {
-            auto dist2 = tile.squareDistanceFromVertex(pos, i);
-            if (dist2 <= dist2min) {
-                dist2min = dist2;
-                imin = i;
-            }
-        }
-        if (imin < 0) {
-            direction = -1;
-            return;
-        }
-        direction = imin;
-        flip = dist2min <= tile.squareDistanceFromCenter(pos);
-    };
-
-    if (tile.isVisible()) {
-        if (tile.orientation == Orientation::Even) {
-            adjust_by_closest_vertex_index({1,3,5});
-
-        } else if(tile.orientation == Orientation::Odd) {
-            adjust_by_closest_vertex_index({0,2,4});
-        } else {
-            direction = -1;
-        }
-    } else {
-        direction = -1;
-    }
-}
-
-void ofApp::Sticky::updateStep(const TimeStamp& now)
-{
-    if ((now - lastStep) < STEP_DURATION)
-        return;
-    lastStep = now;
-    ++stepIndex;
-    if (stepIndex >= (int) images.size())
-        stepIndex = 0;
-}
-
-void ofApp::ViewCoords::setZoomWithOffset(float newZoom, ofVec2f center)
-{
-    offset += center / zoom;
-    offset -= center / newZoom;
-    zoom = newZoom;
-}
