@@ -23,7 +23,7 @@ public:
     void mouseMoved(int x, int y) override;
     void mouseDragged(int x, int y, int button) override;
     void mousePressed(int x, int y, int button) override;
-    void mouseScrolled(int x, int y, float scrollX, float scrollY ) override;
+    void mouseScrolled(int x, int y, float scrollX, float scrollY) override;
 
     void mouseReleased(int x, int y, int button) override;
     void mouseEntered(int x, int y) override;
@@ -34,6 +34,8 @@ public:
 
 private:
     void createTiles();
+    void createMissingTiles();
+    void removeExtraTiles();
 
     enum class TileColor
     {
@@ -87,10 +89,13 @@ private:
         void draw() const;
         void drawCubeIllusion();
         void removeOrientation() { orientation = Orientation::Blank; }
-        void changeOrientationUp() {
+
+        void changeOrientationUp()
+        {
             orientation = (orientation == Orientation::Blank ? Orientation::Even : (Orientation)(3 - (int)orientation));
         }
-        void changeOrientationDown() {
+        void changeOrientationDown()
+        {
             orientation = (orientation == Orientation::Blank ? Orientation::Odd : (Orientation)(3 - (int)orientation));
         }
 
@@ -114,7 +119,7 @@ private:
         void changeColorUp(const TimeStamp &now)
         {
             if (!enabled) {
-                if (!in_transition ) {
+                if (!in_transition) {
                     color = TileColor::White;
                     orientation = Orientation::Blank;
                 }
@@ -122,7 +127,7 @@ private:
                 start_enabling(now);
                 return;
             }
-            color = (TileColor) (((int) color + 1) % 3);
+            color = (TileColor)(((int)color + 1) % 3);
         }
         void changeColorDown(const TimeStamp &now)
         {
@@ -134,7 +139,7 @@ private:
                 start_enabling(now);
                 return;
             }
-            color = (TileColor) (((int) color + 2) % 3);
+            color = (TileColor)(((int)color + 2) % 3);
         }
         void invertColor()
         {
@@ -142,13 +147,15 @@ private:
                 enabled = true;
                 return;
             }
-            color = (TileColor) (2 - (int) color);
+            color = (TileColor)(2 - (int)color);
         }
 
-        float squareDistanceFromVertex(const ofVec2f &pt, int i) const {
-            return ofVec2f{vertices[i].x, vertices[i].y}.squareDistance(pt);
+        float squareDistanceFromVertex(const ofVec2f &pt, int i) const
+        {
+            return ofVec2f { vertices[i].x, vertices[i].y }.squareDistance(pt);
         }
-        float squareDistanceFromCenter(const ofVec2f &pt) const {
+        float squareDistanceFromCenter(const ofVec2f &pt) const
+        {
             return center.squareDistance(pt);
         }
 
@@ -162,9 +169,14 @@ private:
         }
 
         void connectIfNeighbour(Tile *other);
+        void disconnect();
 
         const std::vector<Tile *>& getNeighbours() { return neighbours; }
 
+        bool isInRect(const ofRectangle &rect) const
+        {
+            return rect.intersects(box);
+        }
     private:
         ofPolyline vertices;
         ofVec2f center;
@@ -182,6 +194,7 @@ private:
     float getFocusAlpha(FloatSeconds period);
     ofColor getFocusColor(int gray, float alpha);
     ofColor getFocusColorMix(ofColor alpha, ofColor beta, FloatSeconds period);
+
     Tile* findTile(float x, float y);
 
     struct Sticky
@@ -203,7 +216,6 @@ private:
         void drawArrow(float length, const float arrowhead);
         void drawNormal(float length, const float arrowhead);
 
-
     private:
         int stepIndex = 0;
         TimeStamp lastStep;
@@ -218,10 +230,41 @@ private:
     void updateSticky(int x, int y);
     void updateSelected();
     void drawSticky();
+    void drawInfo();
     void drawFocus();
     void drawTileFocus(Tile *tile);
 
     void selectSimilarNeighbours(Tile *from);
+
+    struct ViewCoords
+    {
+        ofVec2f size { 0, 0 };
+        float zoom = 1.0;
+        ofVec2f offset { 0, 0 };
+
+        bool operator == (const ViewCoords &other)
+        {
+            return size == other.size
+                && zoom == other.zoom
+                && offset == other.offset;
+        }
+
+        void setZoomWithOffset(float zoom, ofVec2f center);
+
+        ofRectangle getViewRect()
+        {
+            ofRectangle result(0, 0, size.x, size.y);
+            result.scale(1 / zoom, 1 / zoom);
+            result.x += offset.x;
+            result.y += offset.y;
+            return result;
+        }
+    };
+
+    static const int default_zoom_level;
+    int zoomLevel = default_zoom_level;
+
+    ViewCoords view, prevView;
 
     std::list<Tile> tiles;
     TileImages tileImages;
@@ -234,5 +277,9 @@ private:
     bool freezeSelection = false;
     std::vector<Tile *> selectedTiles;
 
+    bool showInfo = true;
+    bool fullScreen = false;
+
     TimeStamp focus_start = Clock::now();
+
 };

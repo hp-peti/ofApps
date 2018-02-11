@@ -4,10 +4,12 @@
 
 #include <array>
 #include <algorithm>
+#include <sstream>
 
-#include <cmath>
 #include <set>
 #include <deque>
+
+#include <cmath>
 #include <ciso646>
 
 #ifdef _DEBUG
@@ -26,6 +28,7 @@ static constexpr float TILE_EDGE_MM = 82.f; // mm
 static constexpr float TILE_SEPARATION_MM = 3.5; // mm
 
 static constexpr float PIX_PER_MM = .5f;
+static constexpr float BG_SCALE = .5f;
 
 static constexpr float TILE_RADIUS_PIX = (TILE_EDGE_MM + TILE_SEPARATION_MM / 2) * PIX_PER_MM;
 static constexpr float LINE_WIDTH_PIX = (TILE_SEPARATION_MM) * PIX_PER_MM;
@@ -36,6 +39,23 @@ static constexpr auto STEP_DURATION = 200ms;
 static constexpr auto ARROW_COLOR_PERIOD = 2s;
 static constexpr auto ARROW_SHORT_LENGTH_PERIOD = 0.75s;
 static constexpr auto ARROW_LONG_LENGTH_PERIOD = 1.5s;
+
+static const float ZOOM_DEFAULT = 1;
+static const float zoom_levels[] = { 
+    1 / 5.f, 1 / 4.f, 1 / 3.f,1 / 2.f, 
+    ZOOM_DEFAULT,
+    2, 3, 4, 5
+};
+
+static constexpr float X_STEP = TILE_RADIUS_PIX;
+static constexpr float Y_STEP = TILE_RADIUS_PIX;
+
+const int ofApp::default_zoom_level = std::find(begin(zoom_levels), end(zoom_levels), ZOOM_DEFAULT) - begin(zoom_levels);
+
+static ofVec2f getViewportSize(bool fullscreen)
+{
+    return ofVec2f(ofGetWindowWidth(), ofGetWindowHeight());
+}
 
 template <typename T>
 inline ofVec2f toVec2f(const complex<T> &vec)
@@ -81,20 +101,72 @@ void ofApp::setup()
     currentTile = nullptr;
 }
 
+namespace TileParams {
+static const float radius = TILE_RADIUS_PIX;
+static const float row_height = radius * std::sin(M_PI / 3);
+static const float col_width = 3 * radius;
+static const float col_offset[2] = { radius, 2 * radius + radius * std::cos((float)M_PI / 3) };
+static const float row_offset = float(row_height / 2);
+
+inline ofVec2f center(int row, int col)
+{
+    return ofVec2f(col_width * col + col_offset[row & 1],
+                   row_height * row + row_offset);
+}
+
+struct IntRange
+{
+    int begin;
+    int end;
+};
+
+float rowf(float y)
+{
+    return ((y - row_offset ) / row_height);
+}
+float colf(float x)
+{
+    return ((x - col_offset[0]) / col_width);
+}
+
+IntRange row_range(float begin_y, float end_y)
+{
+    return IntRange { (int)std::floor(rowf(begin_y) - .5), (int)std::ceil(rowf(end_y) + .5) };
+}
+IntRange col_range(float begin_x, float end_x)
+{
+    return IntRange { (int) std::floor(colf(begin_x) - .5), (int) std::ceil(colf(end_x) + .5) };
+}
+
+struct TileRange
+{
+    IntRange rows;
+    IntRange cols;
+};
+
+TileRange tile_range(const ofVec2f &size, float zoom = 1, const ofVec2f &offset = ofVec2f{0,0})
+{
+    return TileRange {
+        row_range(offset.y, size.y / zoom + offset.y),
+        col_range(offset.x, size.x / zoom + offset.x)
+    };
+}
+
+} // namespace TCP
+
 void ofApp::createTiles()
 {
-    const float radius = TILE_RADIUS_PIX;
-    const float row_height = radius * std::sin(M_PI / 3);
-    const float col_width = 3 * radius;
-    const float col_offset[2] = { radius, 2 * radius + radius * std::cos((float)M_PI / 3) };
-    const float row_offset = float(row_height / 2);
+    view.zoom = zoom_levels[zoomLevel];
+    view.offset = ofVec2f { 0,0 };
+    view.size = getViewportSize(fullScreen);
 
-    const auto NROWS = (int)ceilf(ofGetScreenHeight() / row_height);
-    const auto NCOLS = (int)ceilf(ofGetScreenWidth() / col_width);
+    auto range = TileParams::tile_range(view.size, view.zoom, view.offset);
 
-    for (int row = -1; row <= NROWS; ++row) {
-        for (int col = -1; col <= NCOLS; col++)
-            tiles.emplace_back(col_width * col + col_offset[row & 1], row_height * row + row_offset, radius);
+    for (int row = range.rows.begin; row <= range.rows.end; ++row) {
+        for (int col = range.cols.begin; col <= range.cols.end; col++) {
+            auto center = TileParams::center(row, col);
+            tiles.emplace_back(center.x, center.y, TileParams::radius);
+        }
     }
 
     for (auto tile = tiles.begin(); tile != tiles.end(); ++tile) {
@@ -103,9 +175,61 @@ void ofApp::createTiles()
     }
 }
 
+void ofApp::createMissingTiles()
+{
+    if (view == prevView)
+        return;
+
+    prevView = view;
+
+    auto hasTile = [this](const ofVec2f center) {
+        return std::find_if(tiles.begin(), tiles.end(), [&center](const Tile &tile) {
+            return tile.squareDistanceFromCenter(center) < tile.radiusSquared();
+        }) != tiles.end();
+    };
+
+    auto range = TileParams::tile_range(view.size, view.zoom, view.offset);
+
+    for (int row = range.rows.begin; row <= range.rows.end; ++row) {
+        for (int col = range.cols.begin; col <= range.cols.end; col++) {
+            auto center = TileParams::center(row, col);
+            if (hasTile(center))
+                continue;
+            tiles.emplace_back(center.x, center.y, TileParams::radius);
+            auto last = std::prev(tiles.end());
+            for (auto tile = tiles.begin(); tile != last; ++tile)
+                last->connectIfNeighbour(&*tile);
+        }
+    }
+    removeExtraTiles();
+}
+
+void ofApp::removeExtraTiles()
+{
+    auto windowRect = view.getViewRect();
+
+
+    auto tile = tiles.begin();
+    while (tile != tiles.end()) {
+        if (not tile->isVisible()) {
+            if (not tile->isInRect(windowRect)) {
+                tile->disconnect();
+                tile = tiles.erase(tile);
+                continue;
+            }
+        }
+        ++tile;
+    }
+
+
+
+}
+
 //--------------------------------------------------------------
 void ofApp::update()
 {
+    createMissingTiles();
+
     if (sticky.visible)
     {
         updateSticky();
@@ -164,6 +288,15 @@ void ofApp::Tile::connectIfNeighbour(Tile * other)
 #endif
     neighbours.push_back(other);
     other->neighbours.push_back(this);
+}
+
+void ofApp::Tile::disconnect()
+{
+    for (auto *n : neighbours) {
+        auto &nn = n->neighbours;
+        nn.erase(std::find(nn.begin(), nn.end(), this));
+    }
+    neighbours.clear();
 }
 
 void ofApp::Tile::fill() const
@@ -239,11 +372,19 @@ void ofApp::drawBackground()
     if (concrete.isAllocated())
     {
         ofSetColor(240);
-        ofRectangle winrect = ofGetWindowRect();
+        ofRectangle winrect(0, 0, view.size.x, view.size.y);
         ofRectangle slab { 0, 0, concrete.getWidth(), concrete.getHeight()};
-        slab.scale(PIX_PER_MM, PIX_PER_MM);
-        for (slab.x = 0; slab.x < winrect.width; slab.x += slab.width)
-            for (slab.y = 0; slab.y < winrect.width; slab.y += slab.height)
+        slab.scale(BG_SCALE * view.zoom, BG_SCALE * view.zoom);
+        float offsetx = std::fmod(-view.offset.x * view.zoom, slab.width);
+        if (offsetx > 0)
+            offsetx -= slab.width;
+
+        float offsety = std::fmod(-view.offset.y * view.zoom, slab.width);
+        if (offsety > 0)
+            offsety -= slab.height;
+
+        for (slab.x = offsetx; slab.x < winrect.width; slab.x += slab.width)
+            for (slab.y = offsety; slab.y < winrect.width; slab.y += slab.height)
                 concrete.draw(slab);
     }
     else
@@ -254,7 +395,7 @@ void ofApp::drawBackground()
 
 void ofApp::drawShadows()
 {
-    ofSetLineWidth(LINE_WIDTH_PIX);
+    ofSetLineWidth(LINE_WIDTH_PIX * view.zoom);
     ofPushMatrix();
     ofTranslate(LINE_WIDTH_PIX / 2, LINE_WIDTH_PIX / 2);
     for (auto& tile : tiles)
@@ -271,7 +412,7 @@ void ofApp::drawShadows()
 void ofApp::drawSticky()
 {
     if (sticky.show_arrow) {
-        ofSetLineWidth(2);
+        ofSetLineWidth(2 * view.zoom);
         ofSetColor(getFocusColorMix(ofColor(32, 32, 32, 196), ofColor(160, 160, 160, 240), ARROW_COLOR_PERIOD));
         if (sticky.visible) {
             sticky.drawArrow(TILE_RADIUS_PIX/2 + TILE_RADIUS_PIX/10 * getFocusAlpha(ARROW_SHORT_LENGTH_PERIOD), 10);
@@ -283,6 +424,34 @@ void ofApp::drawSticky()
         ofSetColor(255);
         sticky.draw();
     }
+}
+
+static void drawBottomText(const std::string &text, ofVec2f pos)
+{
+    pos.y -= std::count_if(text.begin(), text.end(), [](char c) { return c == '\n'; }) * 13.5f;
+
+    ofSetColor(0, 200);
+    ofDrawBitmapString(text, pos.x + 1, pos.y + 1);
+    ofSetColor(255);
+    ofDrawBitmapString(text, pos.x, pos.y);
+}
+
+void ofApp::drawInfo()
+{
+    if (not showInfo)
+        return;
+
+    auto viewrect_mm = view.getViewRect();
+    viewrect_mm.scale(1 / PIX_PER_MM, 1 / PIX_PER_MM);
+
+    std::ostringstream info;
+    info
+        << "Scale    : " << "1 px = " << view.zoom / PIX_PER_MM << " mm\n"
+        << "View     : " << viewrect_mm.width << "x" << viewrect_mm.height << "+" << viewrect_mm.x << "x" << viewrect_mm.y << " mm\n"
+        << "Tiles    : " << tiles.size()
+        ;
+    const ofVec2f pos(2, ofGetViewportHeight() - 2);
+    drawBottomText(info.str(), pos);
 }
 
 void ofApp::drawFocus()
@@ -307,7 +476,7 @@ void ofApp::drawTileFocus(Tile * tile)
     }
     if (not tile->enabled or tile->in_transition) {
         ofSetColor(getFocusColor(255, 1 - tile->alpha));
-        ofSetLineWidth(1.5);
+        ofSetLineWidth(1.5 * view.zoom);
         tile->draw();
     }
 }
@@ -380,6 +549,10 @@ void ofApp::draw()
     for (auto & tile : tiles)
        tile.update_alpha(now);
 
+    ofPushMatrix();
+    ofScale(view.zoom);
+    ofTranslate(-view.offset.x, -view.offset.y);
+
     drawShadows();
 
     for (auto & tile : tiles) {
@@ -388,7 +561,7 @@ void ofApp::draw()
         }
     }
 
-    ofSetLineWidth(LINE_WIDTH_PIX);
+    ofSetLineWidth(LINE_WIDTH_PIX * view.zoom);
     for (auto & tile : tiles) {
         if (tile.isVisible()) {
             const float lineAlpha = tile.alpha * 160 / 255;
@@ -404,6 +577,10 @@ void ofApp::draw()
     drawFocus();
  
     drawSticky();
+
+    ofPopMatrix();
+
+    drawInfo();
 }
 
 constexpr int KEY_CTRL_(const char ch)
@@ -417,7 +594,6 @@ static const auto ctrl_or_alt = []() { return    ofGetKeyPressed(OF_KEY_CONTROL)
                                               or ofGetKeyPressed(OF_KEY_LEFT_ALT)
                                               or ofGetKeyPressed(OF_KEY_RIGHT_ALT)
                                               or ofGetKeyPressed(OF_KEY_COMMAND); };
-
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key)
@@ -433,6 +609,10 @@ void ofApp::keyPressed(int key)
                 freezeSelection = true;
             }
         }
+        break;
+    case 'h':
+    case 'H':
+        showInfo = not showInfo;
         break;
     case 'W':
     case 'w':
@@ -538,7 +718,8 @@ void ofApp::keyPressed(int key)
     case KEY_CTRL_('F'):
     case 'f':
     case 'F':
-        ofToggleFullscreen();
+        fullScreen = !fullScreen;
+        ofSetFullscreen(fullScreen);
         break;
     case 'S':
     case 's':
@@ -563,11 +744,34 @@ void ofApp::keyPressed(int key)
         break;
     case OF_KEY_ESC:
         break;
+    case OF_KEY_LEFT:
+        view.offset.x -= X_STEP;
+        break;
     case OF_KEY_RIGHT:
+        view.offset.x += X_STEP;
+        break;
+    case OF_KEY_UP:
+        view.offset.y -= Y_STEP;
+        break;
+    case OF_KEY_DOWN:
+        view.offset.y += Y_STEP;
+        break;
+    case '+':
+        if (zoomLevel + 1 < end(zoom_levels) - begin(zoom_levels))
+            view.setZoomWithOffset(zoom_levels[++zoomLevel], ofVec2f(ofGetMouseX(), ofGetMouseY()));
+        break;
+    case '-':
+        if (zoomLevel > 1)
+            view.setZoomWithOffset(zoom_levels[--zoomLevel], ofVec2f(ofGetMouseX(), ofGetMouseY()));
+        break;
+    case '*':
+        view.zoom = 1;
+        break;
+    case ']':
         if (sticky.direction >= 0)
             ++sticky.direction %= 6;
         break;
-    case OF_KEY_LEFT:
+    case '[':
         if (sticky.direction >= 0)
         (sticky.direction+= 5) %= 6;
         break;
@@ -578,9 +782,8 @@ void ofApp::keyPressed(int key)
         break;
     }
 
-
 #if defined(_DEBUG)
-    clog << std::hex << "0x" <<  key << "('" << (char)key <"')";
+    clog << std::hex << "0x" <<  key << "('" << (char)key << "')";
 #endif
 }
 
@@ -711,6 +914,10 @@ void ofApp::mouseExited(int x, int y)
 void ofApp::windowResized(int w, int h)
 {
     currentTile = nullptr;
+#ifdef _DEBUG
+    clog << "window resized: w = " << w << "; h = " << h << endl;
+#endif
+    view.size = getViewportSize(fullScreen);
 }
 
 //--------------------------------------------------------------
@@ -727,6 +934,11 @@ void ofApp::dragEvent(ofDragInfo dragInfo)
 
 ofApp::Tile* ofApp::findTile(float x, float y)
 {
+    x /= view.zoom;
+    y /= view.zoom;
+    x += view.offset.x;
+    y += view.offset.y;
+
     if (currentTile != nullptr)
         if (currentTile->isPointInside(x, y))
             return currentTile;
@@ -945,3 +1157,9 @@ void ofApp::Sticky::updateStep(const TimeStamp& now)
         stepIndex = 0;
 }
 
+void ofApp::ViewCoords::setZoomWithOffset(float newZoom, ofVec2f center)
+{
+    offset += center / zoom;
+    offset -= center / newZoom;
+    zoom = newZoom;
+}
