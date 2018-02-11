@@ -87,6 +87,8 @@ private:
     bool freezeSelection = false;
     std::vector<Tile *> selectedTiles;
 
+    std::vector<Tile *> viewableTiles;
+
     bool showInfo = true;
     bool fullScreen = false;
 

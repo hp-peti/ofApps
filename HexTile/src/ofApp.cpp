@@ -98,10 +98,13 @@ void ofApp::createTiles()
 
 void ofApp::createMissingTiles(const ViewCoords &view)
 {
-    auto hasTile = [this](const ofVec2f &center) {
-        return std::find_if(tiles.begin(), tiles.end(), [&center](const Tile &tile) {
+    viewableTiles.clear();
+
+    auto findTile = [this](const ofVec2f &center) {
+        auto found = std::find_if(tiles.begin(), tiles.end(), [&center](const Tile &tile) {
             return tile.squareDistanceFromCenter(center) < tile.radiusSquared();
-        }) != tiles.end();
+        });
+        return found != tiles.end() ? &*found : nullptr;
     };
 
     auto range = TileParams::tile_range(viewSize, view.zoom, view.offset);
@@ -109,12 +112,16 @@ void ofApp::createMissingTiles(const ViewCoords &view)
     for (int row = range.rows.begin; row <= range.rows.end; ++row) {
         for (int col = range.cols.begin; col <= range.cols.end; col++) {
             auto center = TileParams::center(row, col);
-            if (hasTile(center))
+            auto existingTile = findTile(center);
+            if (existingTile != nullptr) {
+                viewableTiles.push_back(existingTile);
                 continue;
+            }
             tiles.emplace_back(center.x, center.y, TileParams::radius);
             auto last = std::prev(tiles.end());
+            viewableTiles.push_back(&*last);
             for (auto tile = tiles.begin(); tile != last; ++tile)
-                last->connectIfNeighbour(&*tile);
+                tile->connectIfNeighbour(&*last);
         }
     }
 }
@@ -123,16 +130,35 @@ void ofApp::removeExtraTiles(const ViewCoords &view)
 {
     auto windowRect = view.getViewRect(viewSize);
 
+    std::vector<Tile *> removedTiles;
+
     auto tile = tiles.begin();
     while (tile != tiles.end()) {
         if (not tile->isVisible()) {
             if (not tile->isInRect(windowRect)) {
                 tile->disconnect();
+                removedTiles.push_back(&*tile);
                 tile = tiles.erase(tile);
                 continue;
             }
         }
         ++tile;
+    }
+
+    if (not removedTiles.empty()) {
+        std:sort(removedTiles.begin(), removedTiles.end());
+        if (currentTile != nullptr) {
+            if (std::binary_search(removedTiles.begin(), removedTiles.end(), currentTile)) {
+                if (previousTile == currentTile)
+                    previousTile = nullptr;
+                currentTile = nullptr;
+            }
+        }
+        if (previousTile != nullptr and std::binary_search(removedTiles.begin(), removedTiles.end(), previousTile)) {
+            currentTile = nullptr;
+        }
+        viewableTiles.erase(std::remove_if(viewableTiles.begin(), viewableTiles.end(), [&removedTiles](Tile *tile) { 
+            return std::binary_search(removedTiles.begin(), removedTiles.end(), tile); }), viewableTiles.end());
     }
 }
 
@@ -192,12 +218,12 @@ void ofApp::drawShadows()
     ofSetLineWidth(LINE_WIDTH_PIX * view.zoom);
     ofPushMatrix();
     ofTranslate(LINE_WIDTH_PIX / 2, LINE_WIDTH_PIX / 2);
-    for (auto& tile : tiles)
+    for (auto* tile : viewableTiles)
     {
-        if (tile.isVisible())
+        if (tile->isVisible())
         {
-            ofSetColor(ofColor(0, 0, 0, 128 * tile.alpha));
-            tile.draw();
+            ofSetColor(ofColor(0, 0, 0, 128 * tile->alpha));
+            tile->draw();
         }
     }
     ofPopMatrix();
@@ -342,8 +368,8 @@ void ofApp::draw()
     ofEnableAntiAliasing();
     ofEnableAlphaBlending();
 
-    for (auto & tile : tiles)
-       tile.update_alpha(now);
+    for (auto * tile : viewableTiles)
+       tile->update_alpha(now);
 
     ofPushMatrix();
     ofScale(view.zoom, view.zoom);
@@ -351,22 +377,22 @@ void ofApp::draw()
 
     drawShadows();
 
-    for (auto & tile : tiles) {
-        if (tile.isVisible()) {
-            tile.fill(tileImages);
+    for (auto * tile : viewableTiles) {
+        if (tile->isVisible()) {
+            tile->fill(tileImages);
         }
     }
 
     ofSetLineWidth(LINE_WIDTH_PIX * view.zoom);
-    for (auto & tile : tiles) {
-        if (tile.isVisible()) {
-            const float lineAlpha = tile.alpha * 160 / 255;
+    for (auto * tile : viewableTiles) {
+        if (tile->isVisible()) {
+            const float lineAlpha = tile->alpha * 160 / 255;
             ofSetColor(20, 20, 20, 255 * lineAlpha);
-            tile.draw();
+            tile->draw();
 
             // as if drawn 2 times
             ofSetColor(20, 20, 20, 255 * doubleAlpha(lineAlpha));
-            tile.drawCubeIllusion();
+            tile->drawCubeIllusion();
         }
     }
 
