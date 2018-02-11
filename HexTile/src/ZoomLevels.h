@@ -14,46 +14,48 @@
 
 namespace ZoomLevels {
 
-struct rational
+struct Ratio
 {
     int num;
     unsigned den;
 
-    bool operator == (const rational &other) const
+    bool operator == (const Ratio &other) const
     {
         return num * (int)other.den == other.num * (int)den;
     }
 
-    bool operator < (const rational &other) const
+    bool operator < (const Ratio &other) const
     {
         return num * (int)other.den < other.num * (int)den;
     }
 
-    bool operator != (const rational &other) const
+    bool operator != (const Ratio &other) const
     {
         return !(*this == other);
     }
 
-    bool operator > (const rational &other) const
+    bool operator > (const Ratio &other) const
     {
         return other < *this;
     }
 
     operator float() const { return (float)num / (float)den; }
 
+    friend std::ostream & operator << (std::ostream &out, const Ratio &r) {
+        return out << r.num << '/' << r.den;
+    }
 };
 
-const std::vector<rational> generate(unsigned N)
+const std::vector<Ratio> generate(unsigned N)
 {
-    std::vector<rational> v;
+    std::vector<Ratio> v;
 
     for (int num = 1; num <= (int)N; ++num) {
         for (unsigned den = 1; den <= N; ++den) {
-            rational r { num, den };
+            Ratio r { num, den };
             auto p = std::lower_bound(v.begin(), v.end(), r);
-            if (p == v.end() || *p != r) {
+            if (p == v.end() || *p != r)
                 v.insert(p, r);
-            }
         }
     }
 #ifdef _DEBUG
@@ -67,8 +69,5 @@ const std::vector<rational> generate(unsigned N)
 }
 
 } // namespace ZoomLevels
-
-
-
 
 #endif /* SRC_ZOOMLEVELS_H_ */

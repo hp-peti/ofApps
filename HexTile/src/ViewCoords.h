@@ -13,13 +13,19 @@
 
 struct ViewCoords
 {
-    ofVec2f size { 0, 0 };
     float zoom = 1.0;
     ofVec2f offset { 0, 0 };
 
+    ViewCoords() = default;
+    ViewCoords(float zoom, const ofVec2f &offset) noexcept
+        : zoom(zoom)
+        , offset(offset)
+    {
+    }
+
     bool operator ==(const ViewCoords &other)
     {
-        return size == other.size && zoom == other.zoom && offset == other.offset;
+        return zoom == other.zoom && offset == other.offset;
     }
 
     void setZoomWithOffset(float zoom, ofVec2f center)
@@ -29,7 +35,7 @@ struct ViewCoords
         offset -= center / zoom;
     }
 
-    ofRectangle getViewRect()
+    ofRectangle getViewRect(const ofVec2f &size) const
     {
         ofRectangle result(0, 0, size.x, size.y);
         result.scale(1 / zoom, 1 / zoom);
@@ -37,6 +43,13 @@ struct ViewCoords
         result.y += offset.y;
         return result;
     }
+
+    static ViewCoords blend(const ViewCoords &prevView, const ViewCoords &nextView, float alpha)
+    {
+        const auto beta = 1 - alpha;;
+        return ViewCoords(prevView.zoom * beta + nextView.zoom * alpha, prevView.offset * beta + nextView.offset * alpha);
+    }
+
 };
 
 #endif /* SRC_VIEWCOORDS_H_ */

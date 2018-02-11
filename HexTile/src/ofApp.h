@@ -6,6 +6,7 @@
 #include "Tile.h"
 #include "Sticky.h"
 #include "ViewCoords.h"
+#include "LinearTransition.h"
 
 #include <complex>
 
@@ -37,10 +38,11 @@ public:
 
 private:
     void createTiles();
-    void createMissingTiles();
-    void removeExtraTiles();
+    void createMissingTiles(const ViewCoords &view);
+    void removeExtraTiles(const ViewCoords &view);
 
-
+    void startMoving(const TimeStamp &now, float xoffset, float yoffset);
+    void startZooming(const TimeStamp &now, float newZoom);
 
     float getFocusAlpha(FloatSeconds period);
     ofColor getFocusColor(int gray, float alpha);
@@ -69,7 +71,10 @@ private:
     static const int default_zoom_level();
     int zoomLevel = default_zoom_level();
 
-    ViewCoords view, prevView;
+    ViewCoords view, prevView, nextView;
+    ofVec2f viewSize;
+
+    LinearTransition viewTrans;
 
     std::list<Tile> tiles;
     TileImages tileImages;

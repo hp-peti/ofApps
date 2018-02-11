@@ -22,17 +22,23 @@ static constexpr auto ARROW_COLOR_PERIOD = 2s;
 static constexpr auto ARROW_SHORT_LENGTH_PERIOD = 0.75s;
 static constexpr auto ARROW_LONG_LENGTH_PERIOD = 1.5s;
 
-static constexpr float X_STEP = TILE_RADIUS_PIX;
-static constexpr float Y_STEP = TILE_RADIUS_PIX;
+constexpr auto VIEW_TRANS_DURATION = 125ms;
 
+static constexpr float X_STEP = TILE_RADIUS_PIX / 2;
+static constexpr float Y_STEP = SQRT_3 * TILE_RADIUS_PIX / 4;
+
+static
 const auto zoom_levels = ZoomLevels::generate(6);
 
 const int ofApp::default_zoom_level()
 {
-    return std::find(zoom_levels.begin(), zoom_levels.end(), ZoomLevels::rational { 1,1 }) - zoom_levels.begin();
+    static const int index = std::find(
+        zoom_levels.begin(), zoom_levels.end(),
+        ZoomLevels::Ratio { 1,1 }) - zoom_levels.begin();
+    return index;
 }
 
-static ofVec2f getViewportSize(bool fullscreen)
+static ofVec2f getViewSize()
 {
     return ofVec2f(ofGetWindowWidth(), ofGetWindowHeight());
 }
@@ -60,6 +66,12 @@ void ofApp::setup()
         sticky.images[i].load(imagefile("sticky" + std::to_string(i) + ".png"));
     sticky.images[3] = sticky.images[1];
 
+    view.zoom = zoom_levels[zoomLevel = default_zoom_level()];
+    view.offset = ofVec2f { 0,0 };
+    viewSize = getViewSize();
+    prevView = view;
+    nextView = view;
+
     createTiles();
 
     currentTile = nullptr;
@@ -68,11 +80,7 @@ void ofApp::setup()
 
 void ofApp::createTiles()
 {
-    view.zoom = zoom_levels[zoomLevel];
-    view.offset = ofVec2f { 0,0 };
-    view.size = getViewportSize(fullScreen);
-
-    auto range = TileParams::tile_range(view.size, view.zoom, view.offset);
+    auto range = TileParams::tile_range(viewSize, view.zoom, view.offset);
 
     for (int row = range.rows.begin; row <= range.rows.end; ++row) {
         for (int col = range.cols.begin; col <= range.cols.end; col++) {
@@ -85,22 +93,18 @@ void ofApp::createTiles()
         for (auto other_tile = tiles.begin(); other_tile != tile; ++other_tile)
             tile->connectIfNeighbour(&*other_tile);
     }
+
 }
 
-void ofApp::createMissingTiles()
+void ofApp::createMissingTiles(const ViewCoords &view)
 {
-    if (view == prevView)
-        return;
-
-    prevView = view;
-
-    auto hasTile = [this](const ofVec2f center) {
+    auto hasTile = [this](const ofVec2f &center) {
         return std::find_if(tiles.begin(), tiles.end(), [&center](const Tile &tile) {
             return tile.squareDistanceFromCenter(center) < tile.radiusSquared();
         }) != tiles.end();
     };
 
-    auto range = TileParams::tile_range(view.size, view.zoom, view.offset);
+    auto range = TileParams::tile_range(viewSize, view.zoom, view.offset);
 
     for (int row = range.rows.begin; row <= range.rows.end; ++row) {
         for (int col = range.cols.begin; col <= range.cols.end; col++) {
@@ -113,12 +117,11 @@ void ofApp::createMissingTiles()
                 last->connectIfNeighbour(&*tile);
         }
     }
-    removeExtraTiles();
 }
 
-void ofApp::removeExtraTiles()
+void ofApp::removeExtraTiles(const ViewCoords &view)
 {
-    auto windowRect = view.getViewRect();
+    auto windowRect = view.getViewRect(viewSize);
 
     auto tile = tiles.begin();
     while (tile != tiles.end()) {
@@ -136,12 +139,21 @@ void ofApp::removeExtraTiles()
 //--------------------------------------------------------------
 void ofApp::update()
 {
-    createMissingTiles();
+    const auto now = Clock::now();
+
+    if (viewTrans.isActive()) {
+        if (viewTrans.update(now)) {
+            view = ViewCoords::blend(prevView, nextView, viewTrans.getValue());
+        } else {
+            prevView = view = nextView;
+            removeExtraTiles(view);
+        }
+    }
 
     if (sticky.visible)
     {
         updateSticky();
-        sticky.updateStep(Clock::now());
+        sticky.updateStep(now);
     }
 
     updateSelected();
@@ -152,7 +164,7 @@ void ofApp::drawBackground()
     if (concrete.isAllocated())
     {
         ofSetColor(240);
-        ofRectangle winrect(0, 0, view.size.x, view.size.y);
+        ofRectangle winrect(0, 0, viewSize.x, viewSize.y);
         ofRectangle slab { 0, 0, concrete.getWidth(), concrete.getHeight()};
         slab.scale(BG_SCALE * view.zoom, BG_SCALE * view.zoom);
         float offsetx = std::fmod(-view.offset.x * view.zoom, slab.width);
@@ -221,12 +233,12 @@ void ofApp::drawInfo()
     if (not showInfo)
         return;
 
-    auto viewrect_mm = view.getViewRect();
+    auto viewrect_mm = view.getViewRect(viewSize);
     viewrect_mm.scale(1 / PIX_PER_MM, 1 / PIX_PER_MM);
 
     std::ostringstream info;
     info
-        << "Scale      : " << "1 px = " << view.zoom / PIX_PER_MM << " mm\n"
+        << "Scale      : " << "1 px = " << 1 / (PIX_PER_MM * view.zoom) << " mm\n"
         << "View       : " << (int)viewrect_mm.width << "x" << (int)viewrect_mm.height
                            << " @ " << (int)viewrect_mm.x << "," << (int)viewrect_mm.y << " mm\n"
         << "Tiles      : " << tiles.size() << "\n"
@@ -497,7 +509,6 @@ void ofApp::keyPressed(int key)
             freezeSelection = true;
             break;
         }
-    case KEY_CTRL_('F'):
     case 'f':
     case 'F':
         fullScreen = !fullScreen;
@@ -513,7 +524,6 @@ void ofApp::keyPressed(int key)
         break;
     case 'A':
     case 'a':
-    case KEY_CTRL_('A'):
         sticky.show_arrow = not sticky.show_arrow;
         break;
     case OF_KEY_CONTROL:
@@ -524,30 +534,32 @@ void ofApp::keyPressed(int key)
             freezeSelection = false;
         }
         break;
-    case OF_KEY_ESC:
+    case OF_KEY_HOME:
+        startMoving(now, -view.offset.x, -view.offset.y);
         break;
     case OF_KEY_LEFT:
-        view.offset.x -= X_STEP;
+        startMoving(now, -X_STEP, 0);
         break;
     case OF_KEY_RIGHT:
-        view.offset.x += X_STEP;
+        startMoving(now, +X_STEP, 0);
         break;
     case OF_KEY_UP:
-        view.offset.y -= Y_STEP;
+        startMoving(now, 0, -Y_STEP);
         break;
     case OF_KEY_DOWN:
-        view.offset.y += Y_STEP;
+        startMoving(now, 0, +Y_STEP);
         break;
     case '+':
         if (zoomLevel + 1 < (int)zoom_levels.size())
-            view.setZoomWithOffset(zoom_levels[++zoomLevel], ofVec2f(ofGetMouseX(), ofGetMouseY()));
+            startZooming(now, zoom_levels[++zoomLevel]);
         break;
     case '-':
         if (zoomLevel > 1)
-            view.setZoomWithOffset(zoom_levels[--zoomLevel], ofVec2f(ofGetMouseX(), ofGetMouseY()));
+            startZooming(now, zoom_levels[--zoomLevel]);
         break;
     case '*':
-        view.setZoomWithOffset(zoom_levels[zoomLevel = default_zoom_level()], ofVec2f(ofGetMouseX(), ofGetMouseY()));
+        if (zoomLevel != default_zoom_level())
+            startZooming(now, zoom_levels[zoomLevel = default_zoom_level()]);
         break;
     case ']':
         if (sticky.direction >= 0)
@@ -699,7 +711,10 @@ void ofApp::windowResized(int w, int h)
 #ifdef _DEBUG
     clog << "window resized: w = " << w << "; h = " << h << endl;
 #endif
-    view.size = getViewportSize(fullScreen);
+    viewSize = getViewSize();
+    createMissingTiles(view);
+    if (!viewTrans.isActive())
+        removeExtraTiles(view);
 }
 
 //--------------------------------------------------------------
@@ -777,7 +792,27 @@ void ofApp::findCurrentTile(float x, float y)
 
 }
 
+void ofApp::startMoving(const TimeStamp& now, float xoffset, float yoffset)
+{
+    if (!viewTrans.isActive())
+        nextView = view;
 
+    prevView = view;
+    nextView.offset.x += xoffset;
+    nextView.offset.y += yoffset;
 
+    createMissingTiles(nextView);
+    viewTrans.stop().start(now, VIEW_TRANS_DURATION);
+}
 
+void ofApp::startZooming(const TimeStamp &now, float newZoom)
+{
+    if (!viewTrans.isActive())
+        nextView = view;
 
+    nextView = view;
+    prevView = view;
+    nextView.setZoomWithOffset(newZoom, ofVec2f(ofGetMouseX(), ofGetMouseY()));
+    createMissingTiles(nextView);
+    viewTrans.stop().start(now, VIEW_TRANS_DURATION);
+}
