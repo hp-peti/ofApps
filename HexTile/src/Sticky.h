@@ -11,6 +11,7 @@
 #include "Clock.h"
 
 #include <ofImage.h>
+#include <ofVec2f.h>
 
 #include <vector>
 #include <complex>

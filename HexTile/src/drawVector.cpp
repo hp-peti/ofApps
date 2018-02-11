@@ -9,6 +9,12 @@
 #include "FloatConsts.h"
 
 #include <ofGraphics.h>
+
+#include <ofVec2f.h>
+#include <ofVec3f.h>
+
+using std::complex;
+
 template <typename T>
 inline static ofVec2f toVec2f(const complex<T> &vec)
 {

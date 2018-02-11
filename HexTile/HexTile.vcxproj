@@ -175,19 +175,34 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\drawVector.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\ofApp.cpp">
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <ClCompile Include="src\Sticky.cpp" />
+    <ClCompile Include="src\Tile.cpp" />
     <ClCompile Include="win\winmain.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\AppConsts.h" />
+    <ClInclude Include="src\Clock.h" />
+    <ClInclude Include="src\debug.h" />
+    <ClInclude Include="src\drawVector.h" />
+    <ClInclude Include="src\FloatConsts.h" />
+    <ClInclude Include="src\HexTileConstants.h" />
+    <ClInclude Include="src\LinearTransition.h" />
     <ClInclude Include="src\ofApp.h" />
+    <ClInclude Include="src\Sticky.h" />
+    <ClInclude Include="src\Tile.h" />
+    <ClInclude Include="src\TileParams.h" />
+    <ClInclude Include="src\ViewCoords.h" />
+    <ClInclude Include="src\ZoomLevels.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="$(OF_ROOT)\libs\openFrameworksCompiled\project\vs\openframeworksLib.vcxproj">

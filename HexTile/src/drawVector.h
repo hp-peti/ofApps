@@ -12,7 +12,7 @@
 #include <complex>
 
 void drawVector(const ofVec2f &pos,
-                complex<float> direction,
+                std::complex<float> direction,
                 float length,
                 float arrowhead);
 

@@ -484,7 +484,6 @@ void ofApp::keyPressed(int key)
             freezeSelection = true;
             break;
         }
-    case KEY_CTRL_('O'):
     case 'O':
     case 'o':
         if (not ctrl_or_alt()) {
@@ -587,6 +586,8 @@ void ofApp::keyReleased(int key)
     switch (key) {
     case OF_KEY_CONTROL:
     case OF_KEY_ALT:
+    case OF_KEY_LEFT_ALT:
+    case OF_KEY_RIGHT_ALT:
     case OF_KEY_COMMAND:
         if (!ctrl_or_alt()) {
             enableFlood = false;
@@ -628,7 +629,35 @@ void ofApp::mouseMoved(int x, int y)
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button)
 {
+    auto prevTile = currentTile;
     findCurrentTile(x, y);
+
+    if (not enableFlood) {
+        switch (button) {
+        case OF_MOUSE_BUTTON_LEFT:
+            if (   prevTile != nullptr
+               and prevTile != currentTile
+               and currentTile != nullptr
+               and prevTile->enabled
+               ) {
+                currentTile->color = prevTile->color;
+                if (not currentTile->enabled) {
+                    currentTile->orientation = prevTile->orientation;
+                    currentTile->start_enabling(Clock::now());
+                }
+            }
+            break;
+        case OF_MOUSE_BUTTON_RIGHT:
+            if (   currentTile != nullptr 
+                and currentTile != prevTile
+                and currentTile->enabled
+            ) {
+                currentTile->start_disabling(Clock::now());
+            }
+            break;
+        }
+    }
+
     updateSticky(x, y);
 }
 

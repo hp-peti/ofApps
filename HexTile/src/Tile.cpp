@@ -9,9 +9,10 @@
 
 #include "TileParams.h"
 
-#include "ofGraphics.h"
-
+#include <ofGraphics.h>
+#include <ofPoint.h>
 #include <complex>
+#include <ciso646>
 #include <array>
 
 Tile::Tile(float x, float y, float radius) :

@@ -52,7 +52,7 @@ struct Tile
 
     bool isVisible() const
     {
-        return enabled or in_transition;
+        return enabled || in_transition;
     }
 
     void update_alpha(const TimeStamp &now);

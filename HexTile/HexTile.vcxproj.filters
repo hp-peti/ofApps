@@ -10,6 +10,15 @@
     <ClCompile Include="win\winmain.cpp">
       <Filter>win</Filter>
     </ClCompile>
+    <ClCompile Include="src\drawVector.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Sticky.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Tile.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="src">
@@ -26,8 +35,46 @@
     <ClInclude Include="src\ofApp.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="src\AppConsts.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Clock.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debug.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\drawVector.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\FloatConsts.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\HexTileConstants.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\LinearTransition.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Sticky.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Tile.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\TileParams.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ViewCoords.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ZoomLevels.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="icon.rc" />
+    <ResourceCompile Include="icon.rc">
+      <Filter>src</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>
