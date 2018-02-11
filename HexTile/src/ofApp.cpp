@@ -101,8 +101,6 @@ void ofApp::createTiles()
 
 void ofApp::createMissingTiles(const ViewCoords &view)
 {
-    viewableTiles.clear();
-
     auto findTile = [this](const ofVec2f &center) {
         auto found = std::find_if(tiles.begin(), tiles.end(), [&center](const Tile &tile) {
             return tile.squareDistanceFromCenter(center) < tile.radiusSquared();
@@ -117,7 +115,8 @@ void ofApp::createMissingTiles(const ViewCoords &view)
             auto center = TileParams::center(row, col);
             auto existingTile = findTile(center);
             if (existingTile != nullptr) {
-                viewableTiles.push_back(existingTile);
+                if (std::find(viewableTiles.begin(), viewableTiles.end(), existingTile) == viewableTiles.end())
+                    viewableTiles.push_back(existingTile);
                 continue;
             }
             tiles.emplace_back(center.x, center.y, TileParams::radius);
@@ -133,38 +132,26 @@ void ofApp::removeExtraTiles(const ViewCoords &view)
 {
     auto windowRect = view.getViewRect(viewSize);
 
-    std::vector<Tile *> removedTiles;
+    viewableTiles.clear();
 
     auto tile = tiles.begin();
     while (tile != tiles.end()) {
-        if (not tile->isVisible()) {
-            if (not tile->isInRect(windowRect)) {
+        if (not tile->isInRect(windowRect)) {
+            if (not tile->isVisible()) {
                 tile->disconnect();
-                removedTiles.push_back(&*tile);
+                if (currentTile == &*tile)
+                    currentTile = nullptr;
+                if (previousTile == &*tile)
+                    previousTile = nullptr;
                 tile = tiles.erase(tile);
                 continue;
             }
+        } else {
+            viewableTiles.push_back(&*tile);
         }
         ++tile;
     }
-
-    if (not removedTiles.empty()) {
-        std::sort(removedTiles.begin(), removedTiles.end());
-        if (currentTile != nullptr) {
-            if (std::binary_search(removedTiles.begin(), removedTiles.end(), currentTile)) {
-                if (previousTile == currentTile)
-                    previousTile = nullptr;
-                currentTile = nullptr;
-            }
-        }
-        if (previousTile != nullptr and std::binary_search(removedTiles.begin(), removedTiles.end(), previousTile)) {
-            currentTile = nullptr;
-        }
-        viewableTiles.erase(std::remove_if(viewableTiles.begin(), viewableTiles.end(), [&removedTiles](Tile *tile) { 
-            return std::binary_search(removedTiles.begin(), removedTiles.end(), tile); }), viewableTiles.end());
-
-        viewableTiles.shrink_to_fit();
-    }
+    viewableTiles.shrink_to_fit();
 }
 
 //--------------------------------------------------------------
