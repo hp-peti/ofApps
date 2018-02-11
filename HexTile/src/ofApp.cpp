@@ -143,10 +143,12 @@ void ofApp::update()
 
     if (viewTrans.isActive()) {
         if (viewTrans.update(now)) {
-            view = ViewCoords::blend(prevView, nextView, viewTrans.getValue());
+            auto blend = sin(M_PI * viewTrans.getValue() / 2);
+            view = ViewCoords::blend(prevView, nextView, blend);
         } else {
             prevView = view = nextView;
             removeExtraTiles(view);
+            findCurrentTile();
         }
     }
 
@@ -389,6 +391,8 @@ static const auto ctrl_or_alt = []() { return    ofGetKeyPressed(OF_KEY_CONTROL)
                                               or ofGetKeyPressed(OF_KEY_RIGHT_ALT)
                                               or ofGetKeyPressed(OF_KEY_COMMAND); };
 
+static const float step_multiplier() { return shift() ? 9 : 1; };
+
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key)
 {
@@ -537,16 +541,16 @@ void ofApp::keyPressed(int key)
         startMoving(now, -view.offset.x, -view.offset.y);
         break;
     case OF_KEY_LEFT:
-        startMoving(now, -X_STEP, 0);
+        startMoving(now, -X_STEP * step_multiplier(), 0);
         break;
     case OF_KEY_RIGHT:
-        startMoving(now, +X_STEP, 0);
+        startMoving(now, +X_STEP * step_multiplier(), 0);
         break;
     case OF_KEY_UP:
-        startMoving(now, 0, -Y_STEP);
+        startMoving(now, 0, -Y_STEP * step_multiplier());
         break;
     case OF_KEY_DOWN:
-        startMoving(now, 0, +Y_STEP);
+        startMoving(now, 0, +Y_STEP * step_multiplier());
         break;
     case '+':
         if (zoomLevel + 1 < (int)zoom_levels.size())
