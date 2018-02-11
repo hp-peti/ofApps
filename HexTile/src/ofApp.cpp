@@ -162,6 +162,8 @@ void ofApp::removeExtraTiles(const ViewCoords &view)
         }
         viewableTiles.erase(std::remove_if(viewableTiles.begin(), viewableTiles.end(), [&removedTiles](Tile *tile) { 
             return std::binary_search(removedTiles.begin(), removedTiles.end(), tile); }), viewableTiles.end());
+
+        viewableTiles.shrink_to_fit();
     }
 }
 
