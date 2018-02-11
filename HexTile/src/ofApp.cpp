@@ -614,7 +614,7 @@ void ofApp::draw()
        tile.update_alpha(now);
 
     ofPushMatrix();
-    ofScale(view.zoom);
+    ofScale(view.zoom, view.zoom);
     ofTranslate(-view.offset.x, -view.offset.y);
 
     drawShadows();
@@ -821,7 +821,7 @@ void ofApp::keyPressed(int key)
         view.offset.y += Y_STEP;
         break;
     case '+':
-        if (zoomLevel + 1 < zoom_levels.size())
+        if (zoomLevel + 1 < (int)zoom_levels.size())
             view.setZoomWithOffset(zoom_levels[++zoomLevel], ofVec2f(ofGetMouseX(), ofGetMouseY()));
         break;
     case '-':
