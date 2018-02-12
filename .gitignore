@@ -1,0 +1,10 @@
+HexTile/bin/*.dll
+HexTile/bin/*.exe
+HexTile/bin/*.exp
+HexTile/bin/*.ilk
+HexTile/bin/*.lib
+HexTile/bin/*.pdb
+HexTile/.vs
+*.VC.db
+*.VC.opendb
+*.vcxproj.user
