@@ -6,6 +6,8 @@
  */
 
 #include <ofMath.h>
+#include <ofMathConstants.h>
+#include <complex>
 
 #include "getrandom.h"
 
@@ -22,7 +24,8 @@ ofColor getRandomColor() {
 }
 
 ofPoint getRandomDisplacement() {
-    return {ofRandom(-3, 3), ofRandom(-3, 3), 0};
+    const auto pt = ofRandom(0, 3) * std::exp(std::complex<float>(0, ofRandom(0, TWO_PI)));
+    return ofPoint(pt.real(), pt.imag(), 0);
 }
 
 float getRandomDisplacementInterval() {
