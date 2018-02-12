@@ -254,13 +254,16 @@ void ofApp::drawInfo()
         return;
 
     auto viewrect_mm = view.getViewRect(viewSize);
-    viewrect_mm.scale(1 / PIX_PER_MM, 1 / PIX_PER_MM);
+    viewrect_mm.x /= PIX_PER_MM;
+    viewrect_mm.y /= PIX_PER_MM;
+    viewrect_mm.width /= PIX_PER_MM;
+    viewrect_mm.height /= PIX_PER_MM;
 
     std::ostringstream info;
     info
-        << "Scale      : " << "1 px = " << 1 / (PIX_PER_MM * view.zoom) << " mm\n"
-        << "View       : " << (int)viewrect_mm.width << "x" << (int)viewrect_mm.height
-                           << " @ " << (int)viewrect_mm.x << "," << (int)viewrect_mm.y << " mm\n"
+        << "Scale      : " << "1px = " << 1 / (PIX_PER_MM * view.zoom) << "mm\n"
+        << "View       : " << (int)viewrect_mm.width << "mm x " << (int)viewrect_mm.height << "mm"
+                           << " @ " << (int)viewrect_mm.x << "mm, " << (int)viewrect_mm.y << "mm\n"
         << "Tiles      : " << tiles.size() << "\n"
         << "Frame rate : " << std::setprecision(2) << ofGetFrameRate() << " fps";
         ;
