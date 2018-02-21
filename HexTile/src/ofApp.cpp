@@ -73,6 +73,7 @@ void ofApp::setup()
     nextView = view;
 
     createTiles();
+    resizeFrameBuffer(ofGetWidth(), ofGetHeight());
 
     currentTile = nullptr;
 }
