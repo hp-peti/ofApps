@@ -417,6 +417,7 @@ void ofApp::draw()
     ofPushStyle();
     ofDisableAlphaBlending();
     ofDisableDepthTest();
+    ofSetColor(255);
     frameBuffer.draw(0, 0, ofGetWidth(), ofGetHeight());
     ofPopStyle();
 
