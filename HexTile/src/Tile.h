@@ -55,7 +55,7 @@ struct Tile
         return enabled || in_transition;
     }
 
-    void update_alpha(const TimeStamp &now);
+    bool update_alpha(const TimeStamp &now);
     void start_enabling(const TimeStamp &now);
     void start_disabling(const TimeStamp &now);
 
@@ -63,9 +63,12 @@ struct Tile
     void fill(TileImages &) const;
     void draw() const;
     void drawCubeIllusion();
-    void removeOrientation()
+    bool removeOrientation()
     {
+        if (orientation == Orientation::Blank)
+            return false;
         orientation = Orientation::Blank;
+        return true;
     }
 
     void changeOrientationUp()

@@ -142,17 +142,17 @@ void Tile::drawCubeIllusion()
     }
 }
 
-void Tile::update_alpha(const TimeStamp& now)
+bool Tile::update_alpha(const TimeStamp& now)
 {
     if (not in_transition)
-        return;
+        return false;
 
     const float final_alpha = enabled ? 1 : 0;
 
     if ((now - alpha_stop).count() > 0) {
         in_transition = false;
         alpha = final_alpha;
-        return;
+        return true;
     }
 
     auto from_start = duration_cast<FloatSeconds>(now - alpha_start);
@@ -160,6 +160,8 @@ void Tile::update_alpha(const TimeStamp& now)
 
     float progress = from_start.count() / total.count();
     alpha = initial_alpha * (1 - progress) + final_alpha * progress;
+
+    return true;
 }
 
 void Tile::start_enabling(const TimeStamp& now)

@@ -50,6 +50,12 @@ struct ViewCoords
         return ViewCoords(prevView.zoom * beta + nextView.zoom * alpha, prevView.offset * beta + nextView.offset * alpha);
     }
 
+    void applyToCurrentMatrix() const
+    {
+        ofScale(zoom, zoom);
+        ofTranslate(-offset.x, -offset.y);
+    }
+
 };
 
 #endif /* SRC_VIEWCOORDS_H_ */

@@ -96,7 +96,6 @@ void ofApp::createTiles()
             tile->connectIfNeighbour(&*other_tile);
         viewableTiles.push_back(&*tile);
     }
-
 }
 
 void ofApp::createMissingTiles(const ViewCoords &view)
@@ -168,6 +167,7 @@ void ofApp::update()
             removeExtraTiles(view);
             findCurrentTile();
         }
+        redrawFramebuffer = true;
     }
 
     if (sticky.visible)
@@ -343,6 +343,13 @@ void ofApp::selectSimilarNeighbours(Tile *from)
     }
 }
 
+void ofApp::resizeFrameBuffer(int w, int h)
+{
+    frameBuffer.clear();
+    frameBuffer.allocate(w, h, GL_RGBA);
+    redrawFramebuffer = true;
+}
+
 // b == a * ( 1 - alpha ) + x * alpha
 // c == b * ( 1 - alpha ) + x * alpha
 //   == (a * ( 1 - alpha ) + x * alpha) * (1 - alpha) + x * alpha
@@ -353,9 +360,10 @@ inline T doubleAlpha(const T &alpha) {
     return 2 * alpha - alpha * alpha;
 }
 
-void ofApp::draw()
+void ofApp::drawToFramebuffer()
 {
-    auto now = Clock::now();
+    ofPushStyle();
+    frameBuffer.begin();
 
     drawBackground();
 
@@ -363,12 +371,8 @@ void ofApp::draw()
     ofEnableAntiAliasing();
     ofEnableAlphaBlending();
 
-    for (auto * tile : viewableTiles)
-       tile->update_alpha(now);
-
     ofPushMatrix();
-    ofScale(view.zoom, view.zoom);
-    ofTranslate(-view.offset.x, -view.offset.y);
+    view.applyToCurrentMatrix();
 
     drawShadows();
 
@@ -391,13 +395,38 @@ void ofApp::draw()
         }
     }
 
-    drawFocus();
- 
-    drawSticky();
+    ofPopMatrix();
+    frameBuffer.end();
+    ofPopStyle();
+}
 
+void ofApp::draw()
+{
+    auto now = Clock::now();
+    bool rfb = false;
+    for (auto * tile : viewableTiles)
+        rfb |= tile->update_alpha(now);
+    redrawFramebuffer |= rfb;
+
+    if (redrawFramebuffer) {
+        drawToFramebuffer();
+        redrawFramebuffer = false;
+    }
+
+    ofPushStyle();
+    ofDisableAlphaBlending();
+    ofDisableDepthTest();
+    frameBuffer.draw(0, 0, ofGetWidth(), ofGetHeight());
+    ofPopStyle();
+
+    ofPushMatrix();
+    view.applyToCurrentMatrix();
+    drawFocus();
+    drawSticky();
     ofPopMatrix();
 
     drawInfo();
+
 }
 
 constexpr int KEY_CTRL_(const char ch)
@@ -426,6 +455,7 @@ void ofApp::keyPressed(int key)
             if (tile->isVisible()) {
                 tile->invertColor();
                 freezeSelection = true;
+                redrawFramebuffer = true;
             }
         }
         break;
@@ -442,6 +472,7 @@ void ofApp::keyPressed(int key)
             tile->start_enabling(now);
         }
         freezeSelection = true;
+        redrawFramebuffer = true;
         break;
     case 'B':
     case 'b':
@@ -452,6 +483,7 @@ void ofApp::keyPressed(int key)
             tile->start_enabling(now);
         }
         freezeSelection = true;
+        redrawFramebuffer = true;
         break;
     case 'G':
     case 'g':
@@ -462,6 +494,7 @@ void ofApp::keyPressed(int key)
             tile->start_enabling(now);
         }
         freezeSelection = true;
+        redrawFramebuffer = true;
         break;
     case 'c':
     case 'C':
@@ -469,6 +502,7 @@ void ofApp::keyPressed(int key)
             if (tile->isVisible())
                 tile->orientation = Orientation::Blank;
         freezeSelection = true;
+        redrawFramebuffer = true;
         break;
     case 'D':
     case 'd':
@@ -483,6 +517,7 @@ void ofApp::keyPressed(int key)
             }
         }
         freezeSelection = true;
+        redrawFramebuffer = true;
         break;
     case 'r':
     case 'R':
@@ -507,6 +542,7 @@ void ofApp::keyPressed(int key)
                 }
             }
             freezeSelection = true;
+            redrawFramebuffer = true;
             break;
         }
     case 'O':
@@ -531,6 +567,7 @@ void ofApp::keyPressed(int key)
                     tile->changeToRandomNonBlankOrientation();
             }
             freezeSelection = true;
+            redrawFramebuffer = true;
             break;
         }
     case 'f':
@@ -670,6 +707,7 @@ void ofApp::mouseDragged(int x, int y, int button)
                     currentTile->orientation = prevTile->orientation;
                     currentTile->start_enabling(Clock::now());
                 }
+                redrawFramebuffer = true;
             }
             break;
         case OF_MOUSE_BUTTON_RIGHT:
@@ -678,6 +716,7 @@ void ofApp::mouseDragged(int x, int y, int button)
                 and currentTile->enabled
             ) {
                 currentTile->start_disabling(Clock::now());
+                redrawFramebuffer = true;
             }
             break;
         }
@@ -700,6 +739,7 @@ void ofApp::mousePressed(int x, int y, int button)
             else
                 for (auto *tile : selectedTiles)
                     tile->changeColorDown(now);
+            redrawFramebuffer = true;
             freezeSelection = true;
             resetFocusStartTime();
             break;
@@ -709,12 +749,13 @@ void ofApp::mousePressed(int x, int y, int button)
                     tile->start_disabling(now);
                 }
             }
+            // redrawFramebuffer = true;
             resetFocusStartTime();
             freezeSelection = true;
             break;
         case OF_MOUSE_BUTTON_MIDDLE:
             for (auto *tile : selectedTiles)
-                tile->removeOrientation();
+                redrawFramebuffer |= tile->removeOrientation();
             freezeSelection = true;
             resetFocusStartTime();
             break;
@@ -734,6 +775,8 @@ void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY)
 
             if (scrollY < 0)
                 tile->changeOrientationDown();
+
+            redrawFramebuffer = true;
         }
     }
     freezeSelection = true;
@@ -761,6 +804,7 @@ void ofApp::mouseExited(int x, int y)
 //--------------------------------------------------------------
 void ofApp::windowResized(int w, int h)
 {
+    resizeFrameBuffer(w, h);
     currentTile = nullptr;
 #ifdef _DEBUG
     clog << "window resized: w = " << w << "; h = " << h << endl;

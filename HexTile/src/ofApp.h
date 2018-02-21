@@ -65,6 +65,12 @@ private:
 
     void selectSimilarNeighbours(Tile *from);
 
+    void drawToFramebuffer();
+
+    void resizeFrameBuffer(int w, int h);
+
+    bool redrawFramebuffer = false;
+    ofFbo frameBuffer;
 
     ofImage concrete;
 
