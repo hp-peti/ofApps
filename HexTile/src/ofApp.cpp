@@ -44,6 +44,16 @@ static ofVec2f getViewSize()
 }
 
 
+static const auto shift = []() { return ofGetKeyPressed(OF_KEY_SHIFT); };
+static const auto ctrl_or_alt = []() { return    ofGetKeyPressed(OF_KEY_CONTROL)
+                                              or ofGetKeyPressed(OF_KEY_ALT)
+                                              or ofGetKeyPressed(OF_KEY_LEFT_ALT)
+                                              or ofGetKeyPressed(OF_KEY_RIGHT_ALT)
+                                              or ofGetKeyPressed(OF_KEY_COMMAND); };
+
+static const float step_multiplier() { return shift() ? 9 : 1; };
+
+
 //--------------------------------------------------------------
 void ofApp::setup()
 {
@@ -274,26 +284,41 @@ void ofApp::drawInfo()
 
 void ofApp::drawFocus()
 {
+    auto shift = ::shift();
+
     if (!enableFlood) {
-        drawTileFocus(currentTile);
+        drawTileFocus(currentTile, shift);
     } else {
         for (auto *tile : selectedTiles) {
-            drawTileFocus(tile);
+            drawTileFocus(tile, shift);
         }
     }
 }
 
-void ofApp::drawTileFocus(Tile * tile)
+void ofApp::drawTileFocus(Tile * tile, bool shift)
 {
     if (tile == nullptr)
         return;
 
+    const auto getFocusGray = [shift](const TileColor color) -> unsigned char {
+        switch (color) {
+        case TileColor::Gray:
+            return ! shift ? 240 : 64;
+        case TileColor::Black:
+            return ! shift ? 128 : 240;
+        case TileColor::White:
+            return ! shift ? 64 : 128;
+        default:
+            return 128;
+        }
+    };
+
     if (tile->enabled or tile->in_transition) {
-        ofSetColor(getFocusColor(128, tile->alpha));
+        ofSetColor(getFocusColor(getFocusGray(tile->color), tile->alpha));
         tile->fill();
     }
     if (not tile->enabled or tile->in_transition) {
-        ofSetColor(getFocusColor(255, 1 - tile->alpha));
+        ofSetColor(getFocusColor(!shift ? 255 : 0 , 1 - tile->alpha));
         ofSetLineWidth(1.5 * view.zoom);
         tile->draw();
     }
@@ -435,15 +460,6 @@ constexpr int KEY_CTRL_(const char ch)
 {
     return ch >= 'A' && ch <= 'Z' ? ch - 'A' + 1 : ch;
 }
-
-static const auto shift = []() { return ofGetKeyPressed(OF_KEY_SHIFT); };
-static const auto ctrl_or_alt = []() { return    ofGetKeyPressed(OF_KEY_CONTROL)
-                                              or ofGetKeyPressed(OF_KEY_ALT)
-                                              or ofGetKeyPressed(OF_KEY_LEFT_ALT)
-                                              or ofGetKeyPressed(OF_KEY_RIGHT_ALT)
-                                              or ofGetKeyPressed(OF_KEY_COMMAND); };
-
-static const float step_multiplier() { return shift() ? 9 : 1; };
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key)

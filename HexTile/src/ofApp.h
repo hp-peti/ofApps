@@ -61,7 +61,7 @@ private:
     void drawSticky();
     void drawInfo();
     void drawFocus();
-    void drawTileFocus(Tile *tile);
+    void drawTileFocus(Tile *tile, bool shift);
 
     void selectSimilarNeighbours(Tile *from);
 
