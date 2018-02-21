@@ -549,6 +549,7 @@ void ofApp::keyPressed(int key)
                     if (tile.isVisible())
                         tile.changeColorDown(now);
             }
+            redrawFramebuffer = true;
             break;
         } else {
             if (not shift()) {
