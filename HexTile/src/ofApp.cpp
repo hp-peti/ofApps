@@ -740,8 +740,22 @@ void ofApp::mouseDragged(int x, int y, int button)
             }
             break;
         }
+    } else {
+        switch (button) {
+        case OF_MOUSE_BUTTON_RIGHT:
+            if (currentTile != nullptr
+                and currentTile->enabled
+                ) {
+                const auto now = Clock::now();
+                for (auto *tile : selectedTiles) {
+                    tile->start_disabling(now);
+                }
+                freezeSelection = false;
+                redrawFramebuffer = true;
+            }
+            break;
+        }
     }
-
     updateSticky(x, y);
 }
 

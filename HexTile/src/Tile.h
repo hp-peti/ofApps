@@ -86,8 +86,11 @@ struct Tile
     void changeToRandomColor(const TimeStamp &now)
     {
         color = (TileColor) (int) roundf(ofRandom(2));
-        if (!enabled)
+        if (!enabled) {
+            if (!in_transition)
+                orientation = Orientation::Blank;
             start_enabling(now);
+        }
     }
     void changeToRandomOrientation()
     {
