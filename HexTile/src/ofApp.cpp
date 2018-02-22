@@ -173,6 +173,7 @@ void ofApp::update()
         if (viewTrans.update(now)) {
             auto blend = sin(M_PI * viewTrans.getValue() / 2);
             view = ViewCoords::blend(prevView, nextView, blend);
+            findCurrentTile();
         } else {
             prevView = view = nextView;
             removeExtraTiles(view);
@@ -911,12 +912,11 @@ void ofApp::findCurrentTile(float x, float y)
 
 void ofApp::startMoving(const TimeStamp& now, float xoffset, float yoffset)
 {
-    if (!viewTrans.isActive())
-        nextView = view;
-
+    nextView = view;
     prevView = view;
     nextView.offset.x += xoffset;
     nextView.offset.y += yoffset;
+    nextView.roundOffsetTo(X_STEP, Y_STEP);
 
     createMissingTiles(nextView);
     viewTrans.stop().start(now, VIEW_TRANS_DURATION);
@@ -924,12 +924,12 @@ void ofApp::startMoving(const TimeStamp& now, float xoffset, float yoffset)
 
 void ofApp::startZooming(const TimeStamp &now, float newZoom)
 {
-    if (!viewTrans.isActive())
-        nextView = view;
-
     nextView = view;
     prevView = view;
     nextView.setZoomWithOffset(newZoom, ofVec2f(ofGetMouseX(), ofGetMouseY()));
+    nextView.roundOffsetTo(X_STEP, Y_STEP);
+
+
     createMissingTiles(nextView);
     viewTrans.stop().start(now, VIEW_TRANS_DURATION);
 }

@@ -35,6 +35,18 @@ struct ViewCoords
         offset -= center / zoom;
     }
 
+    void roundOffsetTo(float roundX, float roundY)
+    {
+        static const auto roundTo = [](float &value, float to) {
+            if (to != 0) {
+                value = to * std::round(value / to);
+            }
+        };
+        roundTo(offset.x, roundX);
+        roundTo(offset.y, roundY);
+    }
+
+
     ofRectangle getViewRect(const ofVec2f &size) const
     {
         ofRectangle result(0, 0, size.x, size.y);
