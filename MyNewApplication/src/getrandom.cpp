@@ -6,7 +6,9 @@
  */
 
 #include <ofMath.h>
+#if OF_VERSION_MAJOR > 0 || OF_VERSION_MINOR >= 10
 #include <ofMathConstants.h>
+#endif
 #include <complex>
 
 #include "getrandom.h"
