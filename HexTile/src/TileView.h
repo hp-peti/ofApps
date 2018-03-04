@@ -33,7 +33,7 @@ struct TileView
     void findCurrentTile(float x, float y);
 
     void updateSelected();
-    void selectSimilarNeighbours(Tile *from);
+    void selectSimilarNeighbours(Tile* from);
 
     ViewCoords view, prevView, nextView;
     ofVec2f viewSize;

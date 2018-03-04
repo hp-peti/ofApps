@@ -13,6 +13,8 @@
 #include <ofVec2f.h>
 #include <ofVec3f.h>
 
+#include <cmath>
+
 using std::complex;
 
 template <typename T>
@@ -53,7 +55,7 @@ void drawVector(const ofVec2f &pos, complex<float> direction, float length, floa
     ofPushStyle();
     ofFill();
     ofBeginShape();
-    ofVec3f triangle[] = {toVec3f(tript0), toVec3f(tript1) , toVec3f(tript2)};
+    ofVec3f triangle[] = {toVec3f(tript0), toVec3f(tript1) , toVec3f(tript2)}; // @suppress("Missing const-qualification")
     for (auto &vertex : triangle)
         ofVertex(vertex);
 

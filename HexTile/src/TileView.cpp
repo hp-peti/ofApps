@@ -6,10 +6,15 @@
  */
 
 #include "TileView.h"
-
 #include "TileParams.h"
 
+#include <set>
+#include <deque>
 #include <ciso646>
+
+#include <algorithm>
+
+#include <iterator>
 
 void TileView::createTiles()
 {
@@ -33,14 +38,14 @@ void TileView::createTiles()
 
 void TileView::createMissingTiles(const ViewCoords &view)
 {
-    auto findTile = [this](const ofVec2f &center) {
-        auto found = std::find_if(tiles.begin(), tiles.end(), [&center](const Tile &tile) {
+    const auto findTile = [this](const ofVec2f &center) {
+        const auto found = std::find_if(tiles.begin(), tiles.end(), [&center](const Tile &tile) {
             return tile.squareDistanceFromCenter(center) < tile.radiusSquared();
         });
         return found != tiles.end() ? &*found : nullptr;
     };
 
-    auto range = TileParams::tile_range(viewSize, view.zoom, view.offset);
+    const auto range = TileParams::tile_range(viewSize, view.zoom, view.offset);
 
     for (int row = range.rows.begin; row <= range.rows.end; ++row) {
         for (int col = range.cols.begin; col <= range.cols.end; col++) {
@@ -52,7 +57,7 @@ void TileView::createMissingTiles(const ViewCoords &view)
                 continue;
             }
             tiles.emplace_back(center.x, center.y, TileParams::radius);
-            auto last = std::prev(tiles.end());
+            const auto last = std::prev(tiles.end());
             viewableTiles.push_back(&*last);
             for (auto tile = tiles.begin(); tile != last; ++tile)
                 tile->connectIfNeighbour(&*last);
@@ -70,7 +75,7 @@ void TileView::initView(const ViewCoords& vw, const ofVec2f &size)
 
 void TileView::removeExtraTiles(const ViewCoords &view)
 {
-    auto windowRect = view.getViewRect(viewSize);
+    const auto windowRect = view.getViewRect(viewSize);
 
     viewableTiles.clear();
 
@@ -179,7 +184,7 @@ void TileView::updateSelected()
     }
 }
 
-void TileView::selectSimilarNeighbours(Tile *from)
+void TileView::selectSimilarNeighbours(Tile* from)
 {
     if (from == nullptr)
         return;
@@ -192,15 +197,15 @@ void TileView::selectSimilarNeighbours(Tile *from)
 
     const auto state = from->getStateForFloodFill();
 
-    auto is_same = [&state](Tile *tile) {
+    const auto is_same = [&state](Tile *tile) {
         return tile->getStateForFloodFill() == state;
     };
 
-    auto visit = [&visited](Tile *tile) {
+    const auto visit = [&visited](Tile *tile) {
         return visited.insert(tile).second == true;
     };
 
-    auto push = [&queue, found](Tile *tile) {
+    const auto push = [&queue, found](Tile *tile) {
         found->push_back(tile);
         queue.push_back(tile);
     };
@@ -208,7 +213,7 @@ void TileView::selectSimilarNeighbours(Tile *from)
     auto pop = [&queue]() -> Tile * {
         if (queue.empty())
             return nullptr;
-        auto *p = queue.front();
+        const auto p = queue.front();
         queue.pop_front();
         return p;
     };

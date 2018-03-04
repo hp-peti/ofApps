@@ -15,6 +15,10 @@
 #include <ciso646>
 #include <array>
 
+#include <cmath>
+
+#include <algorithm>
+
 Tile::Tile(float x, float y, float radius) :
     center(x, y),
     radius(radius)
@@ -155,10 +159,10 @@ bool Tile::update_alpha(const TimeStamp& now)
         return true;
     }
 
-    auto from_start = duration_cast<FloatSeconds>(now - alpha_start);
-    auto total = duration_cast<FloatSeconds>(alpha_stop - alpha_start);
+    const auto from_start = duration_cast<FloatSeconds>(now - alpha_start);
+    const auto total = duration_cast<FloatSeconds>(alpha_stop - alpha_start);
 
-    float progress = from_start.count() / total.count();
+    const float progress = from_start.count() / total.count();
     alpha = initial_alpha * (1 - progress) + final_alpha * progress;
 
     return true;

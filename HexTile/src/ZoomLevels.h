@@ -12,6 +12,8 @@
 
 #include <vector>
 
+#include <algorithm>
+
 namespace ZoomLevels {
 
 struct Ratio
@@ -53,7 +55,7 @@ const std::vector<Ratio> generate(unsigned N)
     for (int num = 1; num <= (int)N; ++num) {
         for (unsigned den = 1; den <= N; ++den) {
             Ratio r { num, den };
-            auto p = std::lower_bound(v.begin(), v.end(), r);
+            const auto p = std::lower_bound(v.begin(), v.end(), r);
             if (p == v.end() || *p != r)
                 v.insert(p, r);
         }
