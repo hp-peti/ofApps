@@ -84,15 +84,6 @@
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
 		</cconfiguration>
 	</storageModule>
-	<storageModule moduleId="scannerConfiguration">
-		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		<scannerConfigBuildInfo instanceId="cc.openframeworks.configurations.release;cc.openframeworks.configurations.release.1942662317;cdt.managedbuild.tool.gnu.c.compiler.base.1596782541;cdt.managedbuild.tool.gnu.c.compiler.input.920404882">
-			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="cc.openframeworks.configurations.release;cc.openframeworks.configurations.release.1942662317;cdt.managedbuild.tool.gnu.cpp.compiler.base.1896529974;cdt.managedbuild.tool.gnu.cpp.compiler.input.836903177">
-			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
-	</storageModule>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
 		<project id="HexTile.null.1951956092" name="HexTile"/>
 	</storageModule>
@@ -108,4 +99,19 @@
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
 	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
+	<storageModule moduleId="scannerConfiguration">
+		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		<scannerConfigBuildInfo instanceId="cdt.managedbuild.toolchain.gnu.base.1489233396.567491520;cdt.managedbuild.toolchain.gnu.base.1489233396.567491520.;cdt.managedbuild.tool.gnu.cpp.compiler.base.364814180;cdt.managedbuild.tool.gnu.cpp.compiler.input.2011309587">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="cc.openframeworks.configurations.release;cc.openframeworks.configurations.release.1942662317;cdt.managedbuild.tool.gnu.c.compiler.base.1596782541;cdt.managedbuild.tool.gnu.c.compiler.input.920404882">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="cc.openframeworks.configurations.release;cc.openframeworks.configurations.release.1942662317;cdt.managedbuild.tool.gnu.cpp.compiler.base.1896529974;cdt.managedbuild.tool.gnu.cpp.compiler.input.836903177">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="cdt.managedbuild.toolchain.gnu.base.1489233396.567491520;cdt.managedbuild.toolchain.gnu.base.1489233396.567491520.;cdt.managedbuild.tool.gnu.c.compiler.base.1942646723;cdt.managedbuild.tool.gnu.c.compiler.input.174595091">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
+	</storageModule>
 </cproject>
