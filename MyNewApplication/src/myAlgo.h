@@ -9,7 +9,6 @@
 #define SRC_MYALGO_H_
 
 #include <iterator>
-#include <utility>
 
 namespace my {
 

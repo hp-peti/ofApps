@@ -39,7 +39,8 @@ struct Line {
         Transition<float> width = { getRandomWidth, getRandomWidthInterval };
     };
 
-    Properties::Ptr getProperties() {
+    Properties::Ptr getProperties() const
+    {
         return properties;
     }
 

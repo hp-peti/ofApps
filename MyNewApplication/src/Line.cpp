@@ -14,7 +14,6 @@
 #include <ofPolyline.h>
 
 #include <vector>
-#include <functional>
 
 #include <ciso646>
 
