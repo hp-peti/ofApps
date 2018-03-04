@@ -24,9 +24,6 @@ static constexpr auto ARROW_LONG_LENGTH_PERIOD = 1.5s;
 
 constexpr auto VIEW_TRANS_DURATION = 125ms;
 
-static constexpr float X_STEP = TILE_RADIUS_PIX / 2;
-static constexpr float Y_STEP = SQRT_3 * TILE_RADIUS_PIX / 4;
-
 static
 const auto zoom_levels = ZoomLevels::generate(6);
 
@@ -76,107 +73,33 @@ void ofApp::setup()
         sticky.images[i].load(imagefile("sticky" + std::to_string(i) + ".png"));
     sticky.images[3] = sticky.images[1];
 
-    view.zoom = zoom_levels[zoomLevel = default_zoom_level()];
-    view.offset = ofVec2f { 0,0 };
-    viewSize = getViewSize();
-    prevView = view;
-    nextView = view;
+    tv.initView(ViewCoords{zoom_levels[zoomLevel = default_zoom_level()],
+                           ofVec2f{0,0}},
+                getViewSize());
 
-    createTiles();
+    tv.createTiles();
     resizeFrameBuffer(ofGetWidth(), ofGetHeight());
 
-    currentTile = nullptr;
+    tv.currentTile = nullptr;
+    tv.resetFocusStartTime = [this]{focus_start = Clock::now();};
 }
 
 
-void ofApp::createTiles()
-{
-    auto range = TileParams::tile_range(viewSize, view.zoom, view.offset);
 
-    for (int row = range.rows.begin; row <= range.rows.end; ++row) {
-        for (int col = range.cols.begin; col <= range.cols.end; col++) {
-            auto center = TileParams::center(row, col);
-            tiles.emplace_back(center.x, center.y, TileParams::radius);
-        }
-    }
-
-    viewableTiles.reserve(tiles.size());
-
-    for (auto tile = tiles.begin(); tile != tiles.end(); ++tile) {
-        for (auto other_tile = tiles.begin(); other_tile != tile; ++other_tile)
-            tile->connectIfNeighbour(&*other_tile);
-        viewableTiles.push_back(&*tile);
-    }
-}
-
-void ofApp::createMissingTiles(const ViewCoords &view)
-{
-    auto findTile = [this](const ofVec2f &center) {
-        auto found = std::find_if(tiles.begin(), tiles.end(), [&center](const Tile &tile) {
-            return tile.squareDistanceFromCenter(center) < tile.radiusSquared();
-        });
-        return found != tiles.end() ? &*found : nullptr;
-    };
-
-    auto range = TileParams::tile_range(viewSize, view.zoom, view.offset);
-
-    for (int row = range.rows.begin; row <= range.rows.end; ++row) {
-        for (int col = range.cols.begin; col <= range.cols.end; col++) {
-            auto center = TileParams::center(row, col);
-            auto existingTile = findTile(center);
-            if (existingTile != nullptr) {
-                if (std::find(viewableTiles.begin(), viewableTiles.end(), existingTile) == viewableTiles.end())
-                    viewableTiles.push_back(existingTile);
-                continue;
-            }
-            tiles.emplace_back(center.x, center.y, TileParams::radius);
-            auto last = std::prev(tiles.end());
-            viewableTiles.push_back(&*last);
-            for (auto tile = tiles.begin(); tile != last; ++tile)
-                tile->connectIfNeighbour(&*last);
-        }
-    }
-}
-
-void ofApp::removeExtraTiles(const ViewCoords &view)
-{
-    auto windowRect = view.getViewRect(viewSize);
-
-    viewableTiles.clear();
-
-    auto tile = tiles.begin();
-    while (tile != tiles.end()) {
-        if (not tile->isInRect(windowRect)) {
-            if (not tile->isVisible()) {
-                tile->disconnect();
-                if (currentTile == &*tile)
-                    currentTile = nullptr;
-                if (previousTile == &*tile)
-                    previousTile = nullptr;
-                tile = tiles.erase(tile);
-                continue;
-            }
-        } else {
-            viewableTiles.push_back(&*tile);
-        }
-        ++tile;
-    }
-    viewableTiles.shrink_to_fit();
-}
 
 //--------------------------------------------------------------
 void ofApp::update()
 {
     const auto now = Clock::now();
 
-    if (viewTrans.isActive()) {
-        if (viewTrans.update(now)) {
-            auto blend = sin(M_PI * viewTrans.getValue() / 2);
-            view = ViewCoords::blend(prevView, nextView, blend);
+    if (tv.viewTrans.isActive()) {
+        if (tv.viewTrans.update(now)) {
+            auto blend = sin(M_PI * tv.viewTrans.getValue() / 2);
+            tv.view = ViewCoords::blend(tv.prevView, tv.nextView, blend);
             findCurrentTile();
         } else {
-            prevView = view = nextView;
-            removeExtraTiles(view);
+            tv.prevView = tv.view = tv.nextView;
+            tv.removeExtraTiles(tv.view);
             findCurrentTile();
         }
         redrawFramebuffer = true;
@@ -188,13 +111,15 @@ void ofApp::update()
         sticky.updateStep(now);
     }
 
-    updateSelected();
+    tv.updateSelected();
 }
 
 void ofApp::drawBackground()
 {
     if (concrete.isAllocated())
     {
+        const auto &viewSize = tv.viewSize;
+        const auto &view = tv.view;
         ofSetColor(240);
         ofRectangle winrect(0, 0, viewSize.x, viewSize.y);
         ofRectangle slab { 0, 0, concrete.getWidth(), concrete.getHeight()};
@@ -219,10 +144,10 @@ void ofApp::drawBackground()
 
 void ofApp::drawShadows()
 {
-    ofSetLineWidth(LINE_WIDTH_PIX * view.zoom);
+    ofSetLineWidth(LINE_WIDTH_PIX * tv.view.zoom);
     ofPushMatrix();
     ofTranslate(LINE_WIDTH_PIX / 2, LINE_WIDTH_PIX / 2);
-    for (auto* tile : viewableTiles)
+    for (auto* tile : tv.viewableTiles)
     {
         if (tile->isVisible())
         {
@@ -236,7 +161,7 @@ void ofApp::drawShadows()
 void ofApp::drawSticky()
 {
     if (sticky.show_arrow) {
-        ofSetLineWidth(2 * view.zoom);
+        ofSetLineWidth(2 * tv.view.zoom);
         ofSetColor(getFocusColorMix(ofColor(32, 32, 32, 196), ofColor(160, 160, 160, 240), ARROW_COLOR_PERIOD));
         if (sticky.visible) {
             sticky.drawArrow(TILE_RADIUS_PIX/2 + TILE_RADIUS_PIX/10 * getFocusAlpha(ARROW_SHORT_LENGTH_PERIOD), 10);
@@ -265,6 +190,10 @@ void ofApp::drawInfo()
     if (not showInfo)
         return;
 
+    const auto &view = tv.view;
+    const auto &tiles = tv.tiles;
+    const auto &viewSize = tv.viewSize;
+
     auto viewrect_mm = view.getViewRect(viewSize);
     viewrect_mm.x /= PIX_PER_MM;
     viewrect_mm.y /= PIX_PER_MM;
@@ -287,10 +216,10 @@ void ofApp::drawFocus()
 {
     auto shift = ::shift();
 
-    if (!enableFlood) {
-        drawTileFocus(currentTile, shift);
+    if (!tv.enableFlood) {
+        drawTileFocus(tv.currentTile, shift);
     } else {
-        for (auto *tile : selectedTiles) {
+        for (auto *tile : tv.selectedTiles) {
             drawTileFocus(tile, shift);
         }
     }
@@ -320,53 +249,8 @@ void ofApp::drawTileFocus(Tile * tile, bool shift)
     }
     if (not tile->enabled or tile->in_transition) {
         ofSetColor(getFocusColor(!shift ? 255 : 0 , 1 - tile->alpha));
-        ofSetLineWidth(1.5 * view.zoom);
+        ofSetLineWidth(1.5 * tv.view.zoom);
         tile->draw();
-    }
-}
-
-void ofApp::selectSimilarNeighbours(Tile *from)
-{
-    if (from == nullptr)
-        return;
-
-    auto *found = &selectedTiles;
-    found->clear();
-
-    std::set<Tile *> visited;
-    std::deque<Tile *> queue;
-
-    const auto state = from->getStateForFloodFill();
-
-    auto is_same = [&state](Tile *tile) {
-        return tile->getStateForFloodFill() == state;
-    };
-
-    auto visit = [&visited](Tile *tile) {
-        return visited.insert(tile).second == true;
-    };
-
-    auto push = [&queue, found](Tile *tile) {
-        found->push_back(tile);
-        queue.push_back(tile);
-    };
-
-    auto pop = [&queue]() -> Tile * {
-        if (queue.empty())
-            return nullptr;
-        auto *p = queue.front();
-        queue.pop_front();
-        return p;
-    };
-
-    push(from);
-    visit(from);
-
-    while (auto *tile = pop()) {
-        for (auto *next : tile->getNeighbours()) {
-            if (visit(next) && is_same(next))
-                push(next);
-        }
     }
 }
 
@@ -398,10 +282,14 @@ void ofApp::drawToFramebuffer()
     ofEnableAntiAliasing();
     ofEnableAlphaBlending();
 
+    const auto &view = tv.view;
+
     ofPushMatrix();
     view.applyToCurrentMatrix();
 
     drawShadows();
+
+    const auto &viewableTiles = tv.viewableTiles;
 
     for (auto * tile : viewableTiles) {
         if (tile->isVisible()) {
@@ -431,7 +319,7 @@ void ofApp::draw()
 {
     auto now = Clock::now();
     bool rfb = false;
-    for (auto * tile : viewableTiles)
+    for (auto * tile : tv.viewableTiles)
         rfb |= tile->update_alpha(now);
     redrawFramebuffer |= rfb;
 
@@ -448,7 +336,7 @@ void ofApp::draw()
     ofPopStyle();
 
     ofPushMatrix();
-    view.applyToCurrentMatrix();
+    tv.view.applyToCurrentMatrix();
     drawFocus();
     drawSticky();
     ofPopMatrix();
@@ -465,6 +353,12 @@ constexpr int KEY_CTRL_(const char ch)
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key)
 {
+    auto &selectedTiles = tv.selectedTiles;
+    auto &freezeSelection = tv.freezeSelection;
+    auto &enableFlood = tv.enableFlood;
+    auto &tiles = tv.tiles;
+    const auto &view = tv.view;
+
     auto now = Clock::now();
     
     switch (key) {
@@ -616,31 +510,31 @@ void ofApp::keyPressed(int key)
         }
         break;
     case OF_KEY_HOME:
-        startMoving(now, -view.offset.x, -view.offset.y);
+        tv.startMoving(now, VIEW_TRANS_DURATION, -view.offset.x, -view.offset.y);
         break;
     case OF_KEY_LEFT:
-        startMoving(now, -X_STEP * step_multiplier(), 0);
+        tv.startMoving(now, VIEW_TRANS_DURATION, -TileParams::X_STEP * step_multiplier(), 0);
         break;
     case OF_KEY_RIGHT:
-        startMoving(now, +X_STEP * step_multiplier(), 0);
+        tv.startMoving(now, VIEW_TRANS_DURATION, +TileParams::X_STEP * step_multiplier(), 0);
         break;
     case OF_KEY_UP:
-        startMoving(now, 0, -Y_STEP * step_multiplier());
+        tv.startMoving(now, VIEW_TRANS_DURATION, 0, -TileParams::Y_STEP * step_multiplier());
         break;
     case OF_KEY_DOWN:
-        startMoving(now, 0, +Y_STEP * step_multiplier());
+        tv.startMoving(now, VIEW_TRANS_DURATION, 0, +TileParams::Y_STEP * step_multiplier());
         break;
     case '+':
         if (zoomLevel + 1 < (int)zoom_levels.size())
-            startZooming(now, zoom_levels[++zoomLevel]);
+            tv.startZooming(now, VIEW_TRANS_DURATION, zoom_levels[++zoomLevel]);
         break;
     case '-':
         if (zoomLevel > 1)
-            startZooming(now, zoom_levels[--zoomLevel]);
+            tv.startZooming(now, VIEW_TRANS_DURATION, zoom_levels[--zoomLevel]);
         break;
     case '*':
         if (zoomLevel != default_zoom_level())
-            startZooming(now, zoom_levels[zoomLevel = default_zoom_level()]);
+            tv.startZooming(now, VIEW_TRANS_DURATION, zoom_levels[zoomLevel = default_zoom_level()]);
         break;
     case ']':
         if (sticky.direction >= 0)
@@ -672,7 +566,7 @@ void ofApp::keyReleased(int key)
     case OF_KEY_RIGHT_ALT:
     case OF_KEY_COMMAND:
         if (!ctrl_or_alt()) {
-            enableFlood = false;
+            tv.enableFlood = false;
         }
         break;
     }
@@ -680,39 +574,32 @@ void ofApp::keyReleased(int key)
 
 void ofApp::updateSticky(int x, int y)
 {
-    sticky.pos = ofVec2f { (float) (x), (float) (y) } / view.zoom + view.offset;
+    sticky.pos = ofVec2f { (float) (x), (float) (y) } / tv.view.zoom + tv.view.offset;
     if (sticky.visible or sticky.show_arrow) {
-        if (currentTile != nullptr) {
-            sticky.adjustDirection(*currentTile);
+        if (tv.currentTile != nullptr) {
+            sticky.adjustDirection(*tv.currentTile);
         }
     }
 }
 
-void ofApp::updateSelected()
-{
-    if (not enableFlood) {
-        selectedTiles.clear();
-        if (currentTile != nullptr) {
-            selectedTiles.push_back(currentTile);
-        }
-    } else {
-        if (not freezeSelection)
-            selectSimilarNeighbours(currentTile);
-    }
-}
 
 //--------------------------------------------------------------
 void ofApp::mouseMoved(int x, int y)
 {
-    findCurrentTile(x, y);
+    tv.findCurrentTile(x, y);
     updateSticky(x, y);
 }
 
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button)
 {
+    auto &currentTile = tv.currentTile;
+    const auto &selectedTiles = tv.selectedTiles;
+    const auto &enableFlood = tv.enableFlood;
+    auto &freezeSelection = tv.freezeSelection;
+
     auto prevTile = currentTile;
-    findCurrentTile(x, y);
+    tv.findCurrentTile(x, y);
 
     if (not enableFlood) {
         switch (button) {
@@ -762,10 +649,14 @@ void ofApp::mouseDragged(int x, int y, int button)
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button)
 {
-    findCurrentTile(x, y);
-    updateSelected();
+    tv.findCurrentTile(x, y);
+    tv.updateSelected();
+
+    auto &selectedTiles = tv.selectedTiles;
+    auto &freezeSelection = tv.freezeSelection;
+
     auto now = Clock::now();
-        switch (button) {
+    switch (button) {
         case OF_MOUSE_BUTTON_LEFT:
             if (not shift())
                 for (auto *tile : selectedTiles)
@@ -775,7 +666,7 @@ void ofApp::mousePressed(int x, int y, int button)
                     tile->changeColorDown(now);
             redrawFramebuffer = true;
             freezeSelection = true;
-            resetFocusStartTime();
+            tv.resetFocusStartTime();
             break;
         case OF_MOUSE_BUTTON_RIGHT:
             for (auto *tile : selectedTiles) {
@@ -783,15 +674,14 @@ void ofApp::mousePressed(int x, int y, int button)
                     tile->start_disabling(now);
                 }
             }
-            // redrawFramebuffer = true;
-            resetFocusStartTime();
+            tv.resetFocusStartTime();
             freezeSelection = true;
             break;
         case OF_MOUSE_BUTTON_MIDDLE:
             for (auto *tile : selectedTiles)
                 redrawFramebuffer |= tile->removeOrientation();
             freezeSelection = true;
-            resetFocusStartTime();
+            tv.resetFocusStartTime();
             break;
         }
     updateSticky(x, y);
@@ -799,10 +689,10 @@ void ofApp::mousePressed(int x, int y, int button)
 
 void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY)
 {
-    findCurrentTile(x, y);
-    updateSelected();
+    tv.findCurrentTile(x, y);
+    tv.updateSelected();
 
-    for (auto * tile : selectedTiles) {
+    for (auto * tile : tv.selectedTiles) {
         if (tile->isVisible()) {
             if (scrollY > 0)
                 tile->changeOrientationUp();
@@ -813,7 +703,7 @@ void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY)
             redrawFramebuffer = true;
         }
     }
-    freezeSelection = true;
+    tv.freezeSelection = true;
     updateSticky(x, y);
 }
 
@@ -827,26 +717,23 @@ void ofApp::mouseReleased(int x, int y, int button)
 //--------------------------------------------------------------
 void ofApp::mouseEntered(int x, int y)
 {
+    tv.findCurrentTile(x,y);
 }
 
 //--------------------------------------------------------------
 void ofApp::mouseExited(int x, int y)
 {
-    currentTile = nullptr;
+    tv.currentTile = nullptr;
 }
 
 //--------------------------------------------------------------
 void ofApp::windowResized(int w, int h)
 {
     resizeFrameBuffer(w, h);
-    currentTile = nullptr;
 #ifdef _DEBUG
     clog << "window resized: w = " << w << "; h = " << h << endl;
 #endif
-    viewSize = getViewSize();
-    createMissingTiles(view);
-    if (!viewTrans.isActive())
-        removeExtraTiles(view);
+    tv.resizeView(getViewSize());
 }
 
 //--------------------------------------------------------------
@@ -859,27 +746,6 @@ void ofApp::gotMessage(ofMessage msg)
 void ofApp::dragEvent(ofDragInfo dragInfo)
 {
 
-}
-
-Tile* ofApp::findTile(float x, float y)
-{
-    x /= view.zoom;
-    y /= view.zoom;
-    x += view.offset.x;
-    y += view.offset.y;
-
-    if (currentTile != nullptr)
-        if (currentTile->isPointInside(x, y))
-            return currentTile;
-
-    auto found = std::find_if(tiles.begin(), tiles.end(), [x,y](auto &tile) {
-        return tile.isPointInside(x,y);
-    });
-
-    if (found == tiles.end())
-        return nullptr;
-
-    return &*found;
 }
 
 float ofApp::getFocusAlpha(FloatSeconds period)
@@ -902,48 +768,5 @@ ofColor ofApp::getFocusColor(int gray, float alpha)
     return ofColor(gray, gray, gray, a * alpha);
 }
 
-void ofApp::resetFocusStartTime()
-{
-    focus_start = Clock::now();
-}
-
-void ofApp::findCurrentTile(float x, float y)
-{
-    currentTile = findTile(x, y);
-    if (currentTile != nullptr and currentTile != previousTile)
-    {
-        if (enableFlood and freezeSelection) {
-            if (std::find(selectedTiles.begin(), selectedTiles.end(), currentTile) == selectedTiles.end()) {
-                freezeSelection = false;
-            }
-        }
-        if (not enableFlood or not freezeSelection)
-            resetFocusStartTime();
-    }
-    previousTile = currentTile;
-
-}
-
-void ofApp::startMoving(const TimeStamp& now, float xoffset, float yoffset)
-{
-    nextView = view;
-    prevView = view;
-    nextView.offset.x += xoffset;
-    nextView.offset.y += yoffset;
-    nextView.roundOffsetTo(X_STEP, Y_STEP);
-
-    createMissingTiles(nextView);
-    viewTrans.stop().start(now, VIEW_TRANS_DURATION);
-}
-
-void ofApp::startZooming(const TimeStamp &now, float newZoom)
-{
-    nextView = view;
-    prevView = view;
-    nextView.setZoomWithOffset(newZoom, ofVec2f(ofGetMouseX(), ofGetMouseY()));
-    nextView.roundOffsetTo(X_STEP, Y_STEP);
 
 
-    createMissingTiles(nextView);
-    viewTrans.stop().start(now, VIEW_TRANS_DURATION);
-}

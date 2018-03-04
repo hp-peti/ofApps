@@ -10,6 +10,7 @@
 
 #include <ofVec2f.h>
 #include <ofRectangle.h>
+#include <ofGraphics.h>
 
 struct ViewCoords
 {

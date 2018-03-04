@@ -23,6 +23,10 @@ static constexpr float col_width = 3 * radius;
 static constexpr float col_offset[2] = { radius, 2 * radius + radius * cos_60_deg};
 static constexpr float row_offset = float(row_height / 2);
 
+static constexpr float X_STEP = TILE_RADIUS_PIX / 2;
+static constexpr float Y_STEP = SQRT_3 * TILE_RADIUS_PIX / 4;
+
+
 inline ofVec2f center(int row, int col)
 {
     return ofVec2f(col_width * col + col_offset[row & 1],

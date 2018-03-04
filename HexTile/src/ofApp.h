@@ -2,16 +2,12 @@
 
 #include "ofMain.h"
 
-#include "Clock.h"
-#include "Tile.h"
+#include "TileView.h"
+
 #include "Sticky.h"
-#include "ViewCoords.h"
-#include "LinearTransition.h"
 
-#include <complex>
-
-#include <list>
-#include <map>
+//#include <complex>
+//#include <map>
 
 
 class ofApp: public ofBaseApp
@@ -37,63 +33,41 @@ public:
     void gotMessage(ofMessage msg) override;
 
 private:
-    void createTiles();
-    void createMissingTiles(const ViewCoords &view);
-    void removeExtraTiles(const ViewCoords &view);
-
-    void startMoving(const TimeStamp &now, float xoffset, float yoffset);
-    void startZooming(const TimeStamp &now, float newZoom);
+    void findCurrentTile() { tv.findCurrentTile(ofGetMouseX(), ofGetMouseY()); }
 
     float getFocusAlpha(FloatSeconds period);
     ofColor getFocusColor(int gray, float alpha);
     ofColor getFocusColorMix(ofColor alpha, ofColor beta, FloatSeconds period);
 
-    Tile* findTile(float x, float y);
-
-    void findCurrentTile() { findCurrentTile(ofGetMouseX(), ofGetMouseY()); }
-    void findCurrentTile(float x, float y);
-    void resetFocusStartTime();
     void drawBackground();
     void drawShadows();
     void updateSticky() { updateSticky(ofGetMouseX(), ofGetMouseY()); }
     void updateSticky(int x, int y);
-    void updateSelected();
+
+
     void drawSticky();
     void drawInfo();
     void drawFocus();
     void drawTileFocus(Tile *tile, bool shift);
 
-    void selectSimilarNeighbours(Tile *from);
 
     void drawToFramebuffer();
 
     void resizeFrameBuffer(int w, int h);
 
-    bool redrawFramebuffer = false;
     ofFbo frameBuffer;
+    bool redrawFramebuffer = false;
 
     ofImage concrete;
+    TileImages tileImages;
 
     static const int default_zoom_level();
     int zoomLevel = default_zoom_level();
 
-    ViewCoords view, prevView, nextView;
-    ofVec2f viewSize;
 
-    LinearTransition viewTrans;
-
-    std::list<Tile> tiles;
-    TileImages tileImages;
+    TileView tv;
     Sticky sticky;
 
-    Tile* currentTile = nullptr;
-    Tile* previousTile = nullptr;
-
-    bool enableFlood = false;
-    bool freezeSelection = false;
-    std::vector<Tile *> selectedTiles;
-
-    std::vector<Tile *> viewableTiles;
 
     bool showInfo = true;
     bool fullScreen = false;
