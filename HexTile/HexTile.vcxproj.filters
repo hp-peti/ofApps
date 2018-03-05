@@ -19,6 +19,7 @@
     <ClCompile Include="src\Tile.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\TileView.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="src">
@@ -71,6 +72,7 @@
     <ClInclude Include="src\ZoomLevels.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="src\TileView.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="icon.rc">

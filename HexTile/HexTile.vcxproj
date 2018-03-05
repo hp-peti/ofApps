@@ -188,6 +188,7 @@
     </ClCompile>
     <ClCompile Include="src\Sticky.cpp" />
     <ClCompile Include="src\Tile.cpp" />
+    <ClCompile Include="src\TileView.cpp" />
     <ClCompile Include="win\winmain.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -205,6 +206,7 @@
     <ClInclude Include="src\Sticky.h" />
     <ClInclude Include="src\Tile.h" />
     <ClInclude Include="src\TileParams.h" />
+    <ClInclude Include="src\TileView.h" />
     <ClInclude Include="src\ViewCoords.h" />
     <ClInclude Include="src\ZoomLevels.h" />
   </ItemGroup>
