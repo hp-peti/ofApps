@@ -11,7 +11,7 @@
 #include "Clock.h"
 
 constexpr float TILE_EDGE_MM = 82.f; // mm
-constexpr float TILE_SEPARATION_MM = 3.5; // mm
+constexpr float TILE_SEPARATION_MM = 2.0; // mm
 
 constexpr float PIX_PER_MM = .5f;
 constexpr float BG_SCALE = .5f;
