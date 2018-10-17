@@ -38,5 +38,5 @@ int main()
     ofSetFrameRate(120);
     ofSetVerticalSync(true);
 
-    ofRunApp( new ofApp());
+    ofRunApp( new ofImguiApp());
 }
