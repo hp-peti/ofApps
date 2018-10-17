@@ -33,13 +33,14 @@ struct ofImguiApp::Private
 void ofImguiApp::setup()
 {
     ofSetLogLevel(OF_LOG_VERBOSE);
+    ofHideCursor();
 
     //required call
     gui.setup();
 
     auto &imgui = ImGui::GetIO();
 
-    imgui.MouseDrawCursor = false;
+    imgui.MouseDrawCursor = true;
     imgui.IniFilename = nullptr;
 
     //load your own ofImage
