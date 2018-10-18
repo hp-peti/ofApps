@@ -206,7 +206,7 @@ void ofApp::drawInfo()
         << "View       : " << (int)viewrect_mm.width << "mm x " << (int)viewrect_mm.height << "mm"
                            << " @ " << (int)viewrect_mm.x << "mm, " << (int)viewrect_mm.y << "mm\n"
         << "Tiles      : " << tiles.size() << "\n"
-        << "Frame rate : " << std::setprecision(2) << ofGetFrameRate() << " fps";
+        << "Frame rate : " << std::fixed << std::setprecision(2) << ofGetFrameRate() << " fps";
         ;
     const ofVec2f pos(2, ofGetViewportHeight() - 2);
     drawBottomText(info.str(), pos);
